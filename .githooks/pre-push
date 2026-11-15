@@ -1,0 +1,90 @@
+#!/usr/bin/env bash
+# Refuses a push whose new commits carry what must not reach a public repository: home-directory paths, this
+# machine's user name, real email addresses (also as commit author), tokens and keys, XUIDs, public IP addresses.
+#
+#   git config core.hooksPath .githooks     # once per clone
+#
+# It reads only what the push adds: the commits the remote does not have yet, their added lines, messages and
+# author fields. It is a net under the rule in CLAUDE.md, not a replacement for reading what goes out: it knows
+# patterns, not gamertags. A false alarm on a made-up value: git push --no-verify, after looking at the line.
+#
+#   bash .githooks/pre-push --scan-stdin < some-text     # try the patterns on any text
+set -uo pipefail
+
+user="${USERNAME:-${USER:-$(whoami 2> /dev/null || true)}}"
+user="${user##*\\}"
+
+# Prints the lines of stdin that look private, each with the reason in front.
+scan() {
+    local text
+    text=$(cat)
+    {
+        # C:\Users\<name>, /Users/<name>, /home/<name>: a person's home directory. Names in <angle brackets> and
+        # the CI runner's own are not.
+        grep -n -E '([A-Za-z]:\\+Users\\+|/Users/|/home/)[A-Za-z0-9._-]+' <<< "$text" \
+            | grep -v -i -E '(Users\\+|/Users/|/home/)(runner|runneradmin|RUNNER~1|Public|Default|name|user|username|me|you)([\\/" ]|$)' \
+            | sed 's/^/home path | /'
+        if [[ ${#user} -ge 3 ]]; then
+            grep -n -i -w -F -- "$user" <<< "$text" | sed 's/^/user name | /'
+        fi
+        grep -n -i -E '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}' <<< "$text" \
+            | grep -v -i -E '@(users\.noreply\.github\.com|anthropic\.com|example\.(com|org|net))' \
+            | grep -v -E '(uses|artifact|setup-[a-z]+|action[a-z-]*)@|@v[0-9]|@[0-9a-f]{40}|git@github\.com' \
+            | sed 's/^/email | /'
+        grep -n -E 'eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}|gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{30,}|-----BEGIN [A-Z ]*PRIVATE KEY-----|"(refresh_token|access_token|Token|device_code)"[[:space:]]*:[[:space:]]*"[A-Za-z0-9._!*-]{40,}"' \
+            <<< "$text" | sed 's/^/token or key | /'
+        grep -n -w -E '2535[0-9]{12}' <<< "$text" | sed 's/^/XUID | /'
+        # Public IPv4 addresses. Left alone: loopback, private and link-local ranges, the documentation ranges,
+        # masks, well-known resolvers, and x.0.0.0 (a version number more often than an address).
+        grep -n -o -w -E '([0-9]{1,3}\.){3}[0-9]{1,3}' <<< "$text" \
+            | grep -v -E ':(0\.|127\.|10\.|192\.168\.|169\.254\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.0\.2\.|198\.51\.100\.|203\.0\.113\.|255\.|8\.8\.8\.8$|8\.8\.4\.4$|1\.1\.1\.1$|1\.0\.0\.1$|[0-9]+\.0\.0\.0$)' \
+            | grep -v -E ':([0-9]+\.){3}[0-9]{4,}' \
+            | sed 's/^/IP address | /'
+    } | cut -c1-200
+}
+
+if [[ "${1:-}" == "--scan-stdin" ]]; then
+    found=$(scan)
+    [[ -z "$found" ]] && exit 0
+    echo "$found"
+    exit 1
+fi
+
+remote="${1:-origin}"
+zero=0000000000000000000000000000000000000000
+status=0
+while read -r _ local_sha _ remote_sha; do
+    [[ -z "${local_sha:-}" || "$local_sha" == "$zero" ]] && continue # deleting a ref sends nothing
+    if [[ "$remote_sha" == "$zero" ]]; then
+        # A new branch or tag: everything the remote has under no other name.
+        commits=$(git rev-list "$local_sha" --not --remotes="$remote")
+    else
+        commits=$(git rev-list "$remote_sha..$local_sha")
+    fi
+    [[ -z "$commits" ]] && continue
+
+    found=$(
+        {
+            # Added lines only: what is already on the remote is not this push's doing.
+            git log -p --format= --no-color --stdin <<< "$commits" --no-walk | grep -a '^+' | grep -a -v '^+++ '
+            git log --format='%B' --no-walk --stdin <<< "$commits"
+        } | scan
+    )
+    # A commit under a real address publishes it in every clone.
+    authors=$(git log --format='%h %an <%ae> / %cn <%ce>' --no-walk --stdin <<< "$commits" \
+        | grep -v -i -E '^[0-9a-f]+ [^<]*<[^>]*@users\.noreply\.github\.com> / [^<]*<[^>]*(@users\.noreply\.github\.com|noreply@github\.com)>$' \
+        | sed 's/^/author email | /' || true)
+
+    if [[ -n "$found$authors" ]]; then
+        status=1
+        echo "pre-push: these commits look like they carry private data:" >&2
+        [[ -n "$authors" ]] && echo "$authors" >&2
+        [[ -n "$found" ]] && echo "$found" >&2
+    fi
+done
+
+if [[ $status -ne 0 ]]; then
+    echo "pre-push: nothing was pushed. Take it out of the commits (not just the latest one), or, for a made-up" >&2
+    echo "value, push with --no-verify." >&2
+fi
+exit $status
