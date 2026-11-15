@@ -84,14 +84,18 @@ jobs:
           mkdir -p data/mods
           cp -r bin/xbox-live-on-bds data/mods/
           src="$PWD/data"
+          opts=()
           if [[ "$RUNNER_OS" == "Windows" ]]; then
             src=$(cygpath -w "$src")
           else
             # The image runs Wine as root, and Wine refuses a prefix in a directory root does not own.
             sudo chown -R 0:0 data
+            # Docker's default seccomp profile blocks a call wineserver makes ("wine: socket : Function not
+            # implemented"), so Wine cannot start at all.
+            opts+=(--security-opt seccomp=unconfined)
           fi
           docker pull "${{ matrix.image }}"
-          docker run -d -i --name bds -e EULA=TRUE -e VERSION="$version" \
+          docker run -d -i --name bds "${opts[@]}" -e EULA=TRUE -e VERSION="$version" \
             -v "$src:${{ matrix.data }}" "${{ matrix.image }}"
           # Written as it comes (the sign-in code redacted: it is not meant for a public log), so the log is there
           # even when the run is cancelled or times out. Keeps running into the later steps.
@@ -104,7 +108,8 @@ jobs:
           for i in $(seq 1 240); do
             if ! docker ps -q --filter name=bds | grep -q .; then result=exited; break; fi
             if grep -q "Could not start the Microsoft account sign-in" server.log; then result=no-https; break; fi
-            if grep -q "refusing to create a configuration directory" server.log; then result=no-wine; break; fi
+            if grep -q -E "refusing to create a configuration directory|wine: socket : Function not implemented" \
+              server.log; then result=no-wine; break; fi
             if grep -q "Sign in the Xbox account" server.log && grep -q "Server started" server.log; then
               result=ok; break
             fi
@@ -117,7 +122,7 @@ jobs:
           case "$result" in
             ok) echo "The mod loaded, reached Microsoft over HTTPS and the server started" ;;
             no-https) echo "::error::The mod could not reach Microsoft over HTTPS (WinHTTP)"; exit 1 ;;
-            no-wine) echo "::error::Wine could not set up its prefix in /data"; exit 1 ;;
+            no-wine) echo "::error::Wine could not start"; exit 1 ;;
             *)
               grep -q "xbox-live-on-bds loaded" server.log || { echo "::error::The mod did not load ($result)"; exit 1; }
               echo "::error::The mod loaded, but no sign-in code and started server ($result)"; exit 1 ;;
