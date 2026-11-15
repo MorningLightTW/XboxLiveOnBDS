@@ -6,7 +6,7 @@
 
 #include "xbox_live_on_bds/xbl/LobbySession.h"
 
-namespace xbox_live_on_bds {
+namespace xbox_live_on_bds::bds {
 
 /// The lobby as BDS describes itself: server.properties (server-name, level-name, max-players, gamemode),
 /// the game version and network protocol, and the server's NetherNet id. nullopt before the server has
@@ -17,4 +17,4 @@ std::optional<xbl::LobbyInfo> readServerLobbyInfo();
 /// saying what to change. Empty when all is well, or before the server has loaded its properties.
 std::vector<std::string> findJoinBlockers();
 
-} // namespace xbox_live_on_bds
+} // namespace xbox_live_on_bds::bds

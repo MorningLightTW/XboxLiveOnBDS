@@ -1,4 +1,4 @@
-#include "TransportBridge.h"
+#include "xbox_live_on_bds/bds/TransportBridge.h"
 
 #include <algorithm>
 #include <atomic>
@@ -30,7 +30,7 @@
 #include "mc/deps/nether_net/signaling/ConnectResponse.h"
 #include "mc/network/NetworkIdentifier.h"
 
-namespace xbox_live_on_bds::transport_bridge {
+namespace xbox_live_on_bds::bds::transport_bridge {
 
 namespace {
 
@@ -408,4 +408,4 @@ void setSink(std::function<void(std::uint64_t to, std::string signal)> newSink) 
     sinkIdle.wait(lock, [] { return sinkCalls == 0; });
 }
 
-} // namespace xbox_live_on_bds::transport_bridge
+} // namespace xbox_live_on_bds::bds::transport_bridge

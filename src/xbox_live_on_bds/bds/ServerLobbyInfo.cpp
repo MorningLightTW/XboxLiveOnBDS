@@ -1,4 +1,4 @@
-#include "ServerLobbyInfo.h"
+#include "xbox_live_on_bds/bds/ServerLobbyInfo.h"
 
 #include <variant>
 
@@ -12,7 +12,7 @@
 #include "mc/server/PropertiesSettings.h"
 #include "mc/world/level/GameType.h"
 
-namespace xbox_live_on_bds {
+namespace xbox_live_on_bds::bds {
 
 std::optional<xbl::LobbyInfo> readServerLobbyInfo() {
     auto properties = ll::service::getPropertiesSettings();
@@ -66,4 +66,4 @@ std::vector<std::string> findJoinBlockers() {
     return blockers;
 }
 
-} // namespace xbox_live_on_bds
+} // namespace xbox_live_on_bds::bds

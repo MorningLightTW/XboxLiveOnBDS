@@ -11,7 +11,7 @@ class Logger;
 }
 class NetworkIdentifier;
 
-namespace xbox_live_on_bds {
+namespace xbox_live_on_bds::bds {
 
 /// Puts friends' signals straight into BDS's NetherNet transport, as if they came over its own WebSocket
 /// signaling channel, and hands the transport's replies to those peers (CONNECTRESPONSE, CANDIDATEADD,
@@ -60,4 +60,4 @@ struct RelayServer {
 void setRelayServers(std::vector<RelayServer> servers);
 
 } // namespace transport_bridge
-} // namespace xbox_live_on_bds
+} // namespace xbox_live_on_bds::bds

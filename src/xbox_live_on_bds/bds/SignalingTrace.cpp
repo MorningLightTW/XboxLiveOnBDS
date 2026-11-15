@@ -1,4 +1,4 @@
-#include "NetherNetLogging.h"
+#include "xbox_live_on_bds/bds/SignalingTrace.h"
 
 #include "ll/api/memory/Hook.h"
 
@@ -23,7 +23,7 @@
 #include "mc/deps/nether_net/signaling/ConnectRequest.h"
 #include "mc/deps/nether_net/signaling/ConnectResponse.h"
 
-namespace xbox_live_on_bds {
+namespace xbox_live_on_bds::bds {
 
 namespace {
 
@@ -176,4 +176,4 @@ void enableSignalingTrace(ll::io::Logger& logger, std::filesystem::path dir) {
     static ll::memory::HookRegistrar<TraceReceiveHook, TraceSendHook, TraceCreateAnswerHook> registrar;
 }
 
-} // namespace xbox_live_on_bds
+} // namespace xbox_live_on_bds::bds

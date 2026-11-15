@@ -15,11 +15,11 @@
 
 #include "xbox_live_on_bds/Config.h"
 #include "xbox_live_on_bds/LinkMonitor.h"
-#include "xbox_live_on_bds/NetherNetLogging.h"
 #include "xbox_live_on_bds/PingCommand.h"
-#include "xbox_live_on_bds/ServerLobbyInfo.h"
-#include "xbox_live_on_bds/TransportBridge.h"
 #include "xbox_live_on_bds/auth/XboxAuth.h"
+#include "xbox_live_on_bds/bds/ServerLobbyInfo.h"
+#include "xbox_live_on_bds/bds/SignalingTrace.h"
+#include "xbox_live_on_bds/bds/TransportBridge.h"
 #include "xbox_live_on_bds/net/UdpPorts.h"
 #include "xbox_live_on_bds/xbl/LobbySession.h"
 
@@ -65,7 +65,7 @@ bool Mod::load() {
     }
     // Holds the Microsoft account refresh token and the device key: keep the data directory private.
     mAuth = std::make_unique<auth::XboxAuth>(getSelf().getLogger(), getSelf().getDataDir() / "auth.json");
-    transport_bridge::install(getSelf().getLogger()); // Before the server builds its network.
+    bds::transport_bridge::install(getSelf().getLogger()); // Before the server builds its network.
     // Also before it binds its UDP ports: afterwards they are in use by the server itself.
     if (auto warning = net::checkServerUdpPorts("server.properties")) {
         getSelf().getLogger().warn("Friends' joins: {}", *warning);
@@ -77,7 +77,7 @@ bool Mod::load() {
     if (std::filesystem::exists(getSelf().getDataDir() / "debug.flag")) {
         mDebug = true;
         getSelf().getLogger().setLevel(ll::io::LogLevel::Debug);
-        enableSignalingTrace(getSelf().getLogger(), getSelf().getDataDir() / "debug");
+        bds::enableSignalingTrace(getSelf().getLogger(), getSelf().getDataDir() / "debug");
         getSelf().getLogger().warn(
             "Debug mode: debug log, NetherNet signaling trace, join dumps in {}",
             (getSelf().getDataDir() / "debug").string()
@@ -88,23 +88,25 @@ bool Mod::load() {
 
 void Mod::startSession() {
     if (mSession) return;
-    auto info = readServerLobbyInfo();
+    auto info = bds::readServerLobbyInfo();
     if (!info) {
         getSelf().getLogger().error("Server properties are not loaded; cannot start the Xbox Live session");
         return;
     }
-    for (auto const& blocker : findJoinBlockers()) getSelf().getLogger().warn("Friends' joins: {}", blocker);
+    for (auto const& blocker : bds::findJoinBlockers()) getSelf().getLogger().warn("Friends' joins: {}", blocker);
     info->players    = static_cast<int>(mOnline.size());
     info->visibility = mVisibility;
     if (mDebug) info->debugDir = getSelf().getDataDir() / "debug";
-    info->inject = [](std::uint64_t from, std::string_view signal) { return transport_bridge::deliver(from, signal); };
-    info->setInjectSink = [](auto sink) { transport_bridge::setSink(std::move(sink)); };
-    info->onTurnServers = [](std::vector<xbl::Signaling::TurnServer> servers) {
-        std::vector<transport_bridge::RelayServer> relays;
-        for (auto& s : servers) relays.push_back({std::move(s.urls), std::move(s.username), std::move(s.password)});
-        transport_bridge::setRelayServers(std::move(relays));
+    info->inject = [](std::uint64_t from, std::string_view signal) {
+        return bds::transport_bridge::deliver(from, signal);
     };
-    info->prepareTransport = [port = info->localPort] { transport_bridge::prime(port); };
+    info->setInjectSink = [](auto sink) { bds::transport_bridge::setSink(std::move(sink)); };
+    info->onTurnServers = [](std::vector<xbl::Signaling::TurnServer> servers) {
+        std::vector<bds::transport_bridge::RelayServer> relays;
+        for (auto& s : servers) relays.push_back({std::move(s.urls), std::move(s.username), std::move(s.password)});
+        bds::transport_bridge::setRelayServers(std::move(relays));
+    };
+    info->prepareTransport = [port = info->localPort] { bds::transport_bridge::prime(port); };
     mSession               = std::make_unique<xbl::LobbySession>(getSelf().getLogger(), *mAuth, std::move(*info));
 }
 
@@ -123,7 +125,7 @@ bool Mod::enable() {
                 return mLinks ? mLinks->stats(player) : std::nullopt;
             },
             .joinedThroughXboxLive =
-                [](NetworkIdentifier const& id) { return transport_bridge::joinedThroughXboxLive(id); },
+                [](NetworkIdentifier const& id) { return bds::transport_bridge::joinedThroughXboxLive(id); },
         }
     );
 
@@ -136,12 +138,12 @@ bool Mod::enable() {
         mOnline.insert(event.self().getUuid().asString());
         if (mSession) mSession->setPlayers(static_cast<int>(mOnline.size()));
         mLinks->onJoin(event.self());
-        transport_bridge::onPlayerJoined(event.self().getNetworkIdentifier());
+        bds::transport_bridge::onPlayerJoined(event.self().getNetworkIdentifier());
     }));
     mListeners.push_back(
         bus.emplaceListener<ll::event::PlayerDisconnectEvent>([this](ll::event::PlayerDisconnectEvent& event) {
             mLinks->onLeave(event.self());
-            transport_bridge::onPlayerLeft(event.self().getNetworkIdentifier());
+            bds::transport_bridge::onPlayerLeft(event.self().getNetworkIdentifier());
             mOnline.erase(event.self().getUuid().asString());
             if (mSession) mSession->setPlayers(static_cast<int>(mOnline.size()));
         })

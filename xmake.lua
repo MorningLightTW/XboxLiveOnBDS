@@ -60,12 +60,6 @@ target("xbox-live-on-bds")
     add_headerfiles("src/**.h")
     add_files("src/**.cpp")
     add_includedirs("src")
-    local side_dir = is_config("target_type", "server") and "src-server" or "src-client"
-    add_includedirs(side_dir)
-    add_headerfiles(side_dir .. "/**.h")
-    if #os.files(path.join(os.scriptdir(), side_dir, "**.cpp")) > 0 then
-        add_files(side_dir .. "/**.cpp")
-    end
 
 -- Pure-network check with no game or account: xmake build device-auth-test && xmake run device-auth-test
 target("device-auth-test")
