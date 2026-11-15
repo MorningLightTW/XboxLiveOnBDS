@@ -1,9 +1,12 @@
 name: Build the mod
-description: Set up xmake and LLVM, build the mod into bin/, and optionally run the offline tests. Windows runners only.
+description: Set up xmake and LLVM, configure, build the mod into bin/, and optionally run the offline tests. Windows runners only.
 
 inputs:
   cache:
     description: Restore and save the xmake package cache. Off for a release, which builds from fresh downloads.
+    default: "true"
+  build:
+    description: Build the mod. Off to stop after the setup (tools, packages, configuration), for a caller that runs the build itself.
     default: "true"
   tests:
     description: Also build and run the offline tests.
@@ -43,27 +46,28 @@ runs:
         xmake f -a x64 -m release -p windows --target_type=server -y
 
     - name: Build the mod
+      if: inputs.build == 'true'
       shell: pwsh
       run: |
         xmake -w -y
 
     # device-auth-test is left out: it calls Xbox Live over the network.
     - name: STUN test
-      if: inputs.tests == 'true'
+      if: inputs.build == 'true' && inputs.tests == 'true'
       shell: pwsh
       run: |
         xmake build -y stun-test
         xmake run stun-test
 
     - name: UDP ports test
-      if: inputs.tests == 'true'
+      if: inputs.build == 'true' && inputs.tests == 'true'
       shell: pwsh
       run: |
         xmake build -y udp-ports-test
         xmake run udp-ports-test
 
     - name: Signal text test
-      if: inputs.tests == 'true'
+      if: inputs.build == 'true' && inputs.tests == 'true'
       shell: pwsh
       run: |
         xmake build -y signal-text-test

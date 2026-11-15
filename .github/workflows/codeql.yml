@@ -48,18 +48,31 @@ jobs:
         with:
           persist-credentials: false
 
+      # Tools, packages and configuration come before init: once CodeQL traces the job, xmake no longer finds
+      # git ("packages(git): must be installed") and cannot update its repositories.
+      - if: matrix.build-mode == 'manual'
+        uses: ./.github/actions/build
+        with:
+          build: false
+
       - uses: github/codeql-action/init@v4
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
           queries: security-and-quality
 
-      # Between init and analyze, so that the compiler runs are traced. The tests are built too: they are
-      # scanned like the mod.
-      - if: matrix.build-mode == 'manual'
-        uses: ./.github/actions/build
-        with:
-          tests: true
+      # Between init and analyze, so that the compiler runs are traced. The tests are built too (not run): they
+      # are scanned like the mod.
+      - name: Build the mod and the tests
+        if: matrix.build-mode == 'manual'
+        shell: pwsh
+        run: |
+          xmake -w -y
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          foreach ($test in "stun-test", "udp-ports-test", "signal-text-test") {
+            xmake build -y $test
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
 
       - uses: github/codeql-action/analyze@v4
         with:
