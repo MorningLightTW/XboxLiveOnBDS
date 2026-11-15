@@ -12,7 +12,8 @@ inputs:
 runs:
   using: composite
   steps:
-    # xmake is pinned by hand: raise it here when a newer one is needed.
+    # Third-party actions are pinned to a commit (Dependabot moves the pin); a tag could be moved to other code.
+    # The xmake version is pinned by hand: raise it here when a newer one is needed.
     - uses: xmake-io/github-action-setup-xmake@3a1a5dddfc7fa625d9a698738334bf55655a861a # v1.2.5
       with:
         xmake-version: 3.1.2
@@ -27,7 +28,7 @@ runs:
           xmake-
 
     - name: Setup LLVM
-      uses: ZhongRuoyu/setup-llvm@v0
+      uses: ZhongRuoyu/setup-llvm@eea6238baf53d41c1615923680d7a738da584318 # v0.2.0
       with:
         llvm-version: 22
 
