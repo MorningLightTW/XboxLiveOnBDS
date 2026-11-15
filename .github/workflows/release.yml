@@ -103,12 +103,14 @@ jobs:
           unzip -l "$RUNNER_TEMP/$ZIP_NAME"
           (cd "$RUNNER_TEMP" && sha256sum "$ZIP_NAME" | tee "$ZIP_NAME.sha256")
 
+      # archive: false uploads the zip as it is (under its own file name), not zipped once more.
       - name: Keep the zip (dry run)
         if: inputs.dry_run
         uses: actions/upload-artifact@v7
         with:
-          name: ${{ env.ZIP_NAME }}
           path: ${{ runner.temp }}/${{ env.ZIP_NAME }}
+          archive: false
+          retention-days: 7
 
       # Signed proof that this run built the zip: gh attestation verify <zip> -R <owner>/<repo>.
       # Attestations are not offered for a private repository on this plan. Before the push, so that a failure
