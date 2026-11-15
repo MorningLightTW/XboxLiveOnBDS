@@ -66,7 +66,7 @@ jobs:
             data: C:\data
     name: run (${{ matrix.name }})
     runs-on: ${{ matrix.runs-on }}
-    timeout-minutes: 60
+    timeout-minutes: 50
     defaults:
       run:
         shell: bash
@@ -88,22 +88,24 @@ jobs:
           docker pull "${{ matrix.image }}"
           docker run -d -i --name bds -e EULA=TRUE -e VERSION="$version" \
             -v "$src:${{ matrix.data }}" "${{ matrix.image }}"
+          # Written as it comes (the sign-in code redacted: it is not meant for a public log), so the log is there
+          # even when the run is cancelled or times out. Keeps running into the later steps.
+          nohup sh -c "docker logs -f bds 2>&1 | sed -u -E 's/(enter the code )[A-Za-z0-9-]+/\1<redacted>/' > server.log" \
+            > /dev/null 2>&1 &
 
-      # The sign-in code is redacted: it is only good for 15 minutes, but it is not meant for a public log.
       - name: Wait for the mod and the server
         run: |
-          redact() { sed -E 's/(enter the code )[A-Za-z0-9-]+/\1<redacted>/'; }
           result=timeout
-          for i in $(seq 1 330); do
-            log=$(docker logs bds 2>&1 | redact)
+          for i in $(seq 1 240); do
             if ! docker ps -q --filter name=bds | grep -q .; then result=exited; break; fi
-            if grep -q "Could not start the Microsoft account sign-in" <<<"$log"; then result=no-https; break; fi
-            if grep -q "Sign in the Xbox account" <<<"$log" && grep -q "Server started" <<<"$log"; then
+            if grep -q "Could not start the Microsoft account sign-in" server.log; then result=no-https; break; fi
+            if grep -q "Sign in the Xbox account" server.log && grep -q "Server started" server.log; then
               result=ok; break
             fi
+            # Progress, visible while the step runs: the last line the server wrote.
+            if (( i % 6 == 0 )); then echo "[$((i / 6)) min] $(tail -n 1 server.log | cut -c1-200)"; fi
             sleep 10
           done
-          echo "$log" > server.log
           echo "::group::Server log"; cat server.log; echo "::endgroup::"
           echo "result: $result"
           grep -q "xbox-live-on-bds loaded" server.log || { echo "::error::The mod did not load"; exit 1; }
