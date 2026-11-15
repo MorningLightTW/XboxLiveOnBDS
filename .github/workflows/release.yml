@@ -50,8 +50,10 @@ jobs:
           fi
           bash scripts/bump-version.sh "$VERSION"
 
+      # No package cache: what gets published is built from fresh downloads, not from what an earlier run left.
       - uses: ./.github/actions/build
         with:
+          cache: false
           tests: true
 
       - uses: actions/upload-artifact@v7

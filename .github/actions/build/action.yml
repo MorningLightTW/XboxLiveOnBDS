@@ -3,7 +3,7 @@ description: Set up xmake and LLVM, build the mod into bin/, and optionally run 
 
 inputs:
   cache:
-    description: Restore and save the xmake package cache.
+    description: Restore and save the xmake package cache. Off for a release, which builds from fresh downloads.
     default: "true"
   tests:
     description: Also build and run the offline tests.
