@@ -31,12 +31,14 @@ env:
 jobs:
   build:
     runs-on: windows-latest
+    timeout-minutes: 45
     outputs:
       sha: ${{ steps.version.outputs.sha }}
     steps:
       - uses: actions/checkout@v7
         with:
           ref: main
+          persist-credentials: false
 
       - name: Set the version
         id: version
@@ -61,13 +63,16 @@ jobs:
           name: bin
           path: |
             bin/
+          retention-days: 1
 
   publish:
     needs: build
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: write
     steps:
+      # Keeps the token: this job pushes the release commit.
       - uses: actions/checkout@v7
         with:
           ref: ${{ needs.build.outputs.sha }}

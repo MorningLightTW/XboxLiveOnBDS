@@ -30,8 +30,11 @@ jobs:
   # Pinned to the clang-format the code is formatted with (LLVM 23.1.2); another version may format differently.
   format:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: clang-format check
         run: |
@@ -40,8 +43,11 @@ jobs:
 
   build:
     runs-on: windows-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - uses: ./.github/actions/build
         with:
@@ -52,3 +58,4 @@ jobs:
           name: ${{ github.event.repository.name }}-${{ github.sha }}-server-windows-x64
           path: |
             bin/
+          retention-days: 14
