@@ -3,7 +3,11 @@ name: Release
 # Actions > Release > Run workflow, or: gh workflow run release.yml -f version=0.2.0
 # Write the notes under "## [Unreleased]" in CHANGELOG.md first. The run sets the version in xmake.lua, lip.toml
 # and CHANGELOG.md, builds, and only if the build passes commits that to main, tags v<version> and publishes the
-# release with the mod zip.
+# release with the mod zip and its SHA-256.
+#
+# The release commit is pushed with the workflow's own token, so it starts no CI run of its own: this run has
+# already built and tested that exact tree. The push also needs main to accept direct pushes from Actions; with
+# a rule that demands pull requests, give the workflow a bypass (or a token that has one).
 on:
   workflow_dispatch:
     inputs:
@@ -71,6 +75,9 @@ jobs:
     timeout-minutes: 15
     permissions:
       contents: write
+      # For the attestation.
+      id-token: write
+      attestations: write
     steps:
       # Keeps the token: this job pushes the release commit.
       - uses: actions/checkout@v7
@@ -94,6 +101,7 @@ jobs:
           cp CHANGELOG.md LICENSE README.md artifact/
           (cd artifact && zip -r "$RUNNER_TEMP/$ZIP_NAME" .)
           unzip -l "$RUNNER_TEMP/$ZIP_NAME"
+          (cd "$RUNNER_TEMP" && sha256sum "$ZIP_NAME" | tee "$ZIP_NAME.sha256")
 
       - name: Keep the zip (dry run)
         if: inputs.dry_run
@@ -101,6 +109,15 @@ jobs:
         with:
           name: ${{ env.ZIP_NAME }}
           path: ${{ runner.temp }}/${{ env.ZIP_NAME }}
+
+      # Signed proof that this run built the zip: gh attestation verify <zip> -R <owner>/<repo>.
+      # Attestations are not offered for a private repository on this plan. Before the push, so that a failure
+      # here leaves nothing behind.
+      - name: Attest the zip
+        if: ${{ !inputs.dry_run && !github.event.repository.private }}
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: ${{ runner.temp }}/${{ env.ZIP_NAME }}
 
       - name: Commit, tag and publish
         if: ${{ !inputs.dry_run }}
@@ -115,7 +132,7 @@ jobs:
             git commit -am "build: release v$VERSION"
             git push origin HEAD:main
           fi
-          gh release create "v$VERSION" "$RUNNER_TEMP/$ZIP_NAME" \
+          gh release create "v$VERSION" "$RUNNER_TEMP/$ZIP_NAME" "$RUNNER_TEMP/$ZIP_NAME.sha256" \
             --target "$(git rev-parse HEAD)" \
             --title "v$VERSION" \
             --notes-file "$RUNNER_TEMP/notes.md"
