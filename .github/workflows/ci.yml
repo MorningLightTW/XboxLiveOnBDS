@@ -1,0 +1,90 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+    paths: &code
+      - "src/**"
+      - "src-server/**"
+      - "src-client/**"
+      - "tests/**"
+      - "xmake.lua"
+      - "manifest.json"
+      - ".clang-format"
+      - ".github/workflows/ci.yml"
+  pull_request:
+    paths: *code
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A newer push to the same branch or PR cancels the run still going.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Pinned to the clang-format the code is formatted with (LLVM 23.1.2); another version may format differently.
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: clang-format check
+        run: |
+          git ls-files -z 'src/*.cpp' 'src/*.h' 'src-server/*.cpp' 'src-server/*.h' 'tests/*.cpp' \
+            | xargs -0 pipx run clang-format==23.1.2 --style=file --dry-run --Werror
+
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: xmake-io/github-action-setup-xmake@v1
+
+      - uses: actions/cache@v6
+        with:
+          path: |
+            ~/AppData/Local/.xmake
+          key: xmake-${{ hashFiles('xmake.lua') }}
+          restore-keys: |
+            xmake-
+
+      - name: Setup LLVM
+        uses: ZhongRuoyu/setup-llvm@v0
+        with:
+          llvm-version: 22
+
+      - run: |
+          xmake repo -u
+
+      - run: |
+          xmake f -a x64 -m release -p windows --target_type=server -y
+
+      - name: Build the mod
+        run: |
+          xmake -w -y
+
+      # device-auth-test is left out: it calls Xbox Live over the network.
+      - name: STUN test
+        run: |
+          xmake build -y stun-test
+          xmake run stun-test
+
+      - name: UDP ports test
+        run: |
+          xmake build -y udp-ports-test
+          xmake run udp-ports-test
+
+      - name: Signal text test
+        run: |
+          xmake build -y signal-text-test
+          xmake run signal-text-test
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ${{ github.event.repository.name }}-${{ github.sha }}-server-windows-x64
+          path: |
+            bin/

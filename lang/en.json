@@ -1,0 +1,20 @@
+{
+    "XboxLiveOnBDS: your connection to this server": "XboxLiveOnBDS: your connection to this server",
+    "Your connection:": "Your connection:",
+    "{}'s connection:": "{}'s connection:",
+    "Route: {}": "Route: {}",
+    "Xbox Live friend join, direct (P2P)": "Xbox Live friend join, direct (P2P)",
+    "Xbox Live friend join, through Microsoft's relay": "Xbox Live friend join, through Microsoft's relay",
+    "NetherNet (LAN or by address), direct": "NetherNet (LAN or by address), direct",
+    "NetherNet (LAN or by address), through a relay": "NetherNet (LAN or by address), through a relay",
+    "RakNet (by address)": "RakNet (by address)",
+    "Ping: {} ms now, {} ms average": "Ping: {} ms now, {} ms average",
+    "Jitter: {:.0f} ms": "Jitter: {:.0f} ms",
+    "Jitter: measuring": "Jitter: measuring",
+    "Packet loss: {:.1f}% now, {:.1f}% average": "Packet loss: {:.1f}% now, {:.1f}% average",
+    "Connected {:.0f} min, {}% of it through a relay": "Connected {:.0f} min, {}% of it through a relay",
+    "Only operators can view other players' connections.": "Only operators can view other players' connections.",
+    "Name a player when running this outside the game.": "Name a player when running this outside the game.",
+    "No player matched.": "No player matched.",
+    "No connection data for {} yet.": "No connection data for {} yet."
+}

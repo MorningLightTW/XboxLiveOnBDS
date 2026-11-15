@@ -1,0 +1,20 @@
+format = 4
+id = "github.com/MorningLightTW/XboxLiveOnBDS"
+version = "0.1.0"
+
+[info]
+name = "XboxLiveOnBDS"
+description = "XboxLiveOnBDS for LeviLamina"
+tags = ["platform:levilamina", "type:mod"]
+
+[[variants.""]]
+side = "server"
+platform = "win-x64"
+
+[variants."".deps]
+"github.com/LiteLDev/LeviLamina" = "26.60.*"
+
+[[variants."".assets]]
+type = "zip"
+urls = ["https://{{id}}/releases/download/v{{version}}/XboxLiveOnBDS-server-windows-x64.zip"]
+place = [{ src = "xbox-live-on-bds/", dest = "mods/xbox-live-on-bds/" }]

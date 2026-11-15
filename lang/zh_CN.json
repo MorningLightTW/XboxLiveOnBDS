@@ -1,0 +1,20 @@
+{
+    "XboxLiveOnBDS: your connection to this server": "XboxLiveOnBDS：你与此服务器的连接",
+    "Your connection:": "你的连接：",
+    "{}'s connection:": "{} 的连接：",
+    "Route: {}": "连接方式：{}",
+    "Xbox Live friend join, direct (P2P)": "Xbox Live 好友加入，P2P 直连",
+    "Xbox Live friend join, through Microsoft's relay": "Xbox Live 好友加入，经微软中继服务器",
+    "NetherNet (LAN or by address), direct": "NetherNet（局域网或直接连接），直连",
+    "NetherNet (LAN or by address), through a relay": "NetherNet（局域网或直接连接），经中继",
+    "RakNet (by address)": "RakNet（直接连接）",
+    "Ping: {} ms now, {} ms average": "延迟：当前 {} ms，平均 {} ms",
+    "Jitter: {:.0f} ms": "抖动：{:.0f} ms",
+    "Jitter: measuring": "抖动：测量中",
+    "Packet loss: {:.1f}% now, {:.1f}% average": "丢包：当前 {:.1f}%，平均 {:.1f}%",
+    "Connected {:.0f} min, {}% of it through a relay": "已连接 {:.0f} 分钟，其中 {}% 的时间经中继",
+    "Only operators can view other players' connections.": "只有管理员可以查看其他玩家的连接。",
+    "Name a player when running this outside the game.": "在游戏外执行时请指定玩家。",
+    "No player matched.": "找不到匹配的玩家。",
+    "No connection data for {} yet.": "还没有 {} 的连接数据。"
+}

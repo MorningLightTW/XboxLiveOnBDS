@@ -1,0 +1,4 @@
+{
+    // clangd formats with the repo's .clang-format; turn on "editor.formatOnSave" for C++ to keep files formatted.
+    "recommendations": ["llvm-vs-code-extensions.vscode-clangd"]
+}

@@ -1,0 +1,20 @@
+{
+    "XboxLiveOnBDS: your connection to this server": "XboxLiveOnBDS：你與此伺服器的連線",
+    "Your connection:": "你的連線：",
+    "{}'s connection:": "{} 的連線：",
+    "Route: {}": "連線方式：{}",
+    "Xbox Live friend join, direct (P2P)": "Xbox Live 好友加入，P2P 直連",
+    "Xbox Live friend join, through Microsoft's relay": "Xbox Live 好友加入，經微軟中繼伺服器",
+    "NetherNet (LAN or by address), direct": "NetherNet（區網或直接連線），直連",
+    "NetherNet (LAN or by address), through a relay": "NetherNet（區網或直接連線），經中繼",
+    "RakNet (by address)": "RakNet（直接連線）",
+    "Ping: {} ms now, {} ms average": "延遲：目前 {} ms，平均 {} ms",
+    "Jitter: {:.0f} ms": "抖動：{:.0f} ms",
+    "Jitter: measuring": "抖動：測量中",
+    "Packet loss: {:.1f}% now, {:.1f}% average": "封包遺失：目前 {:.1f}%，平均 {:.1f}%",
+    "Connected {:.0f} min, {}% of it through a relay": "已連線 {:.0f} 分鐘，其中 {}% 的時間經中繼",
+    "Only operators can view other players' connections.": "只有管理員可以查看其他玩家的連線。",
+    "Name a player when running this outside the game.": "在遊戲外執行時請指定玩家。",
+    "No player matched.": "找不到符合的玩家。",
+    "No connection data for {} yet.": "還沒有 {} 的連線資料。"
+}
