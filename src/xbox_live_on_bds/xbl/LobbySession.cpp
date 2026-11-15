@@ -532,12 +532,13 @@ struct LobbySession::Impl {
             infoChanged = false;
         }
         logger.info(
-            "Xbox Live session is up: {} of {} can see \"{}\" in the Friends tab (NetherNet id {})",
+            "Xbox Live session is up: {} of {} can see \"{}\" in the Friends tab",
             snapshot.visibility == Visibility::Friends ? "friends" : "friends and friends of friends",
             token.gamertag,
-            snapshot.worldName,
-            snapshot.netherNetId
+            snapshot.worldName
         );
+        // Not at info level: a console log gets pasted when asking for help, and joins are signaled to this id.
+        logger.debug("The session advertises NetherNet id {}", snapshot.netherNetId);
         return true;
     }
 
