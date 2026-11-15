@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- The `Xbox Live session is up` console line no longer shows the server's NetherNet id; it is in the debug log only.
+
 ## [0.1.0] - 2026-11-15
 
 ### Added
