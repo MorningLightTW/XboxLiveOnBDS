@@ -10,6 +10,7 @@ LeviLamina docs: [API](https://docs.levimc.org/LeviLamina/api), [C++ style guide
 
 ```
 xmake repo -u && xmake f -a x64 -m release -p windows -y   # once
+git config core.hooksPath .githooks                         # once: the pre-push privacy check
 xmake -y
 xmake build <stun-test|udp-ports-test|signal-text-test|device-auth-test> && xmake run <same>   # device-auth-test is online
 .\scripts\deploy.ps1 [-NoBuild] [-Server <folder>]         # BDS must be stopped
@@ -48,7 +49,7 @@ xmake build <stun-test|udp-ports-test|signal-text-test|device-auth-test> && xmak
 - Out of scope, no TODOs: auto friend add/accept, MPSD session rotation, multiple host accounts.
 - MCXboxBroadcast is a wire-format reference only; it transfers players, the opposite of this design.
 - Committed content uses placeholders (`Steve`, `Alex`, `test`), never real gamertags, XUIDs, IPs, emails or local paths.
-- Before anything leaves this machine (push, release, issue or PR text, a workflow that prints or uploads files), read what is going out (`git log -p origin/main..HEAD`, messages included) for those and for tokens, sign-in codes and `data/` contents. Found one: stop and say so, do not push. What reaches GitHub stays readable after it is deleted. For a full audit (before a release, before going public, or on request) run the `privacy-audit` agent.
+- Before anything leaves this machine (push, release, issue or PR text, a workflow that prints or uploads files), read what is going out (`git log -p origin/main..HEAD`, messages included) for those and for tokens, sign-in codes and `data/` contents. Found one: stop and say so, do not push. `.githooks/pre-push` refuses the patterns it knows (paths, emails, tokens, XUIDs, public IPs), not gamertags; never pass it with `--no-verify` without the user's say. What reaches GitHub stays readable after it is deleted. For a full audit (before a release, before going public, or on request) run the `privacy-audit` agent.
 - `scripts/` are developer tools: change them freely, no backward compatibility or deprecation path.
 - Code beats README. A feature change updates all three READMEs and `## [Unreleased]` in CHANGELOG.
 - Conventional Commits in English, one kind of change per commit, the why in the body, every commit builds. The docs a code change calls for (READMEs, CHANGELOG) go in their own `docs` commit right after it.
