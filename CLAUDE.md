@@ -34,7 +34,7 @@ xmake build <stun-test|udp-ports-test|signal-text-test|device-auth-test> && xmak
 
 ## BDS / LeviLamina facts the code relies on
 
-- The hooks see BDS's transport only after it handles a signal. `transport_bridge::prime` POSTs `v=0` to `/v1/join/<id>` before publishing (rejected with CONNECTERROR, no peer connection); without it, the first join after a restart falls back to HTTP signaling and hangs behind NAT.
+- The hooks see BDS's transport only after it handles a signal. `bds::transport_bridge::prime` POSTs `v=0` to `/v1/join/<id>` before publishing (rejected with CONNECTERROR, no peer connection); without it, the first join after a restart falls back to HTTP signaling and hangs behind NAT.
 - BDS releases its answer only once ICE reaches the joiner, impossible behind NAT; the stand-in (`ice/StandIn`) answers BDS's checks with the joiner's `ice-pwd`. BDS's answers carry no candidates of its own.
 - `NetherNet::ErrorOr` in the headers is smaller than the real type: never construct or copy it; return origin's result.
 - Wrapping `createAnswer`'s `onComplete` in a new `brstd::move_only_function` crashes BDS (CFG).
