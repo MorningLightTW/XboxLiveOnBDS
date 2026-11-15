@@ -48,12 +48,23 @@ jobs:
         with:
           persist-credentials: false
 
-      # Tools, packages and configuration come before init: once CodeQL traces the job, xmake no longer finds
-      # git ("packages(git): must be installed") and cannot update its repositories.
+      # xmake does its part before init. Once CodeQL traces the job, xmake can no longer start other programs
+      # (git: "packages(git): must be installed"; clang-cl: "The data area passed to a system call is too small"),
+      # so it only sets the build up and writes down the compile commands.
       - if: matrix.build-mode == 'manual'
         uses: ./.github/actions/build
         with:
           build: false
+
+      - name: Write the compile commands
+        if: matrix.build-mode == 'manual'
+        shell: pwsh
+        run: |
+          xmake project -k compile_commands
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $commands = Get-Content compile_commands.json -Raw | ConvertFrom-Json
+          "$($commands.Count) compile command(s):"
+          $commands.file
 
       - uses: github/codeql-action/init@v4
         with:
@@ -61,17 +72,31 @@ jobs:
           build-mode: ${{ matrix.build-mode }}
           queries: security-and-quality
 
-      # Between init and analyze, so that the compiler runs are traced. The tests are built too (not run): they
-      # are scanned like the mod.
-      - name: Build the mod and the tests
+      # Between init and analyze, so that the compiler runs are traced: each compile command is run as xmake
+      # would run it, without xmake. Nothing is linked; CodeQL only needs the compiler to see every source file.
+      - name: Compile every source file
         if: matrix.build-mode == 'manual'
         shell: pwsh
         run: |
-          xmake -w -y
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          foreach ($test in "stun-test", "udp-ports-test", "signal-text-test") {
-            xmake build -y $test
-            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $failed = Get-Content compile_commands.json -Raw | ConvertFrom-Json | ForEach-Object -Parallel {
+            $arguments = @($_.arguments)
+            # The folders of the object file (-Fo) and the PDB (-Fd): xmake makes them when it builds.
+            foreach ($argument in $arguments) {
+              if ($argument -match '^[-/]F[od](.+)$') {
+                New-Item -ItemType Directory -Force (Split-Path $Matches[1]) | Out-Null
+              }
+            }
+            $output = & $arguments[0] $arguments[1..($arguments.Count - 1)] 2>&1
+            if ($LASTEXITCODE -ne 0) {
+              Write-Host "::group::$($_.file) failed"
+              $output | Select-Object -Last 40 | Out-String | Write-Host
+              Write-Host "::endgroup::"
+              $_.file
+            }
+          } -ThrottleLimit 4
+          if ($failed) {
+            Write-Host "::error::$(@($failed).Count) source file(s) did not compile"
+            exit 1
           }
 
       - uses: github/codeql-action/analyze@v4
