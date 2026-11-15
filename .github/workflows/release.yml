@@ -81,11 +81,7 @@ jobs:
         run: |
           bash scripts/bump-version.sh "$VERSION"
           # This version's section of the changelog, for the release page.
-          awk -v v="$VERSION" '
-            index($0, "## [" v "]") == 1 {on = 1; next}
-            /^## \[/ || /^\[[^]]+\]: / {on = 0}
-            on
-          ' CHANGELOG.md > "$RUNNER_TEMP/notes.md"
+          bash scripts/release-notes.sh "$VERSION" > "$RUNNER_TEMP/notes.md"
           cat "$RUNNER_TEMP/notes.md"
 
       - uses: actions/download-artifact@v8

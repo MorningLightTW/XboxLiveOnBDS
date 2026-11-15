@@ -1,0 +1,48 @@
+name: Release check
+
+# Runs the release scripts on a throwaway version, so a change that breaks them (or the files they edit) shows
+# up here and not in the middle of a release.
+on:
+  push:
+    branches:
+      - main
+    paths: &release
+      - "scripts/bump-version.sh"
+      - "scripts/release-notes.sh"
+      - "CHANGELOG.md"
+      - "lip.toml"
+      - "xmake.lua"
+      - ".github/workflows/release-check.yml"
+  pull_request:
+    paths: *release
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  scripts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Bump to a throwaway version
+        run: |
+          # A note of its own under [Unreleased]: the check must not depend on whether there is one right now.
+          sed -i -E 's/^## \[Unreleased\]/&\n\n- Note for the release check./' CHANGELOG.md
+          bash scripts/bump-version.sh 999.0.0
+          git diff --stat
+
+          fail() { echo "::error::$*"; exit 1; }
+          grep -q '^local mod_version = "999\.0\.0"' xmake.lua || fail "xmake.lua does not say 999.0.0"
+          grep -q '^version = "999\.0\.0"' lip.toml || fail "lip.toml does not say 999.0.0"
+          grep -q -E '^## \[999\.0\.0\] - [0-9-]+$' CHANGELOG.md || fail "CHANGELOG.md has no [999.0.0] section"
+          grep -q -E '^\[999\.0\.0\]: https://.+/compare/v.+\.\.\.v999\.0\.0$' CHANGELOG.md \
+            || fail "CHANGELOG.md has no [999.0.0] compare link"
+          [[ -z "$(bash scripts/release-notes.sh Unreleased | tr -d '[:space:]')" ]] \
+            || fail "[Unreleased] still has notes after the bump"
+          bash scripts/release-notes.sh 999.0.0 | grep -q "Note for the release check" \
+            || fail "release-notes.sh does not print the [999.0.0] notes"
