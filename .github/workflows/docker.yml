@@ -95,6 +95,22 @@ jobs:
             opts+=(--security-opt seccomp=unconfined)
           fi
           docker pull "${{ matrix.image }}"
+          if [[ "$RUNNER_OS" != "Windows" ]]; then
+            # The image's entrypoint installs .NET with "winetricks dotnet10", whose x86 installer fails under Wine
+            # (status 2), so lip (a .NET program) cannot install BDS. Set up the prefix the way the entrypoint does,
+            # but unpack the x64 .NET runtime (the one lip needs) instead; the entrypoint skips both steps then.
+            docker run --rm "${opts[@]}" -v "$src:${{ matrix.data }}" --entrypoint sh "${{ matrix.image }}" -c '
+              set -e
+              mkdir -p /data/.tmp
+              wineboot --init
+              xvfb-run -a winetricks -q vcrun2026
+              wget -qO /tmp/dotnet.zip \
+                https://builds.dotnet.microsoft.com/dotnet/Runtime/10.0.5/dotnet-runtime-10.0.5-win-x64.zip
+              mkdir -p "/data/.wine/drive_c/Program Files/dotnet"
+              unzip -q /tmp/dotnet.zip -d "/data/.wine/drive_c/Program Files/dotnet"
+              wineserver -w
+            ' 2>&1 | { grep -v -E "fixme:|^[[:space:]]*$" || true; } | tail -n 40
+          fi
           docker run -d -i --name bds "${opts[@]}" -e EULA=TRUE -e VERSION="$version" \
             -v "$src:${{ matrix.data }}" "${{ matrix.image }}"
           # Written as it comes (the sign-in code redacted: it is not meant for a public log), so the log is there
@@ -110,11 +126,15 @@ jobs:
             if grep -q "Could not start the Microsoft account sign-in" server.log; then result=no-https; break; fi
             if grep -q -E "refusing to create a configuration directory|wine: socket : Function not implemented" \
               server.log; then result=no-wine; break; fi
+            if grep -q "You must install .NET" server.log; then result=no-dotnet; break; fi
             if grep -q "Sign in the Xbox account" server.log && grep -q "Server started" server.log; then
               result=ok; break
             fi
-            # Progress, visible while the step runs: the last line the server wrote.
-            if (( i % 6 == 0 )); then echo "[$((i / 6)) min] $(tail -n 1 server.log | cut -c1-200)"; fi
+            # Progress, visible while the step runs: how far the log is, and its last line with text in it.
+            if (( i % 6 == 0 )); then
+              last=$(grep -v -E "fixme:|^[[:space:]]*$" server.log | tail -n 1 | tr -d '\r' | cut -c1-200)
+              echo "[$((i / 6)) min] $(wc -l < server.log) lines | $last"
+            fi
             sleep 10
           done
           echo "::group::Server log"; cat server.log; echo "::endgroup::"
@@ -123,6 +143,7 @@ jobs:
             ok) echo "The mod loaded, reached Microsoft over HTTPS and the server started" ;;
             no-https) echo "::error::The mod could not reach Microsoft over HTTPS (WinHTTP)"; exit 1 ;;
             no-wine) echo "::error::Wine could not start"; exit 1 ;;
+            no-dotnet) echo "::error::No .NET in the Wine prefix, so lip could not install the server"; exit 1 ;;
             *)
               grep -q "xbox-live-on-bds loaded" server.log || { echo "::error::The mod did not load ($result)"; exit 1; }
               echo "::error::The mod loaded, but no sign-in code and started server ($result)"; exit 1 ;;
