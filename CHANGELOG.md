@@ -7,10 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-
-- Each release comes with a `.sha256` file for the mod zip, to check a download against.
-
 ## [0.1.0] - 2026-11-15
 
 ### Added
@@ -23,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Startup warnings for server settings that block joins, including a `server-udp-ports` already taken by another program (for example a second server on the same computer).
 - `/xbl ping`: any player can see their own connection (Xbox Live friend join or not, direct P2P or Microsoft relay, ping, jitter, packet loss), with no IP addresses, in their game language. Operators can view others with `/xbl ping <player>`.
 - An empty `data/debug.flag` turns on the debug log (why a connection dropped, reconnects, per-player connection quality), a NetherNet signaling trace and join dumps.
+- Each release comes with a `.sha256` file for the mod zip, to check a download against.
 
 [Unreleased]: https://github.com/MorningLightTW/XboxLiveOnBDS/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/MorningLightTW/XboxLiveOnBDS/releases/tag/v0.1.0
