@@ -12,7 +12,10 @@ inputs:
 runs:
   using: composite
   steps:
-    - uses: xmake-io/github-action-setup-xmake@v1
+    # xmake is pinned by hand: raise it here when a newer one is needed.
+    - uses: xmake-io/github-action-setup-xmake@3a1a5dddfc7fa625d9a698738334bf55655a861a # v1.2.5
+      with:
+        xmake-version: 3.1.2
 
     - if: inputs.cache == 'true'
       uses: actions/cache@v6
