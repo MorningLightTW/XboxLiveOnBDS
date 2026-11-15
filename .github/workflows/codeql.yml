@@ -8,6 +8,7 @@ on:
     paths: &code
       - "src/**"
       - "tests/**"
+      - "xmake.lua"
       # The actions language scans every workflow and the local actions.
       - ".github/workflows/**"
       - ".github/actions/**"
@@ -23,9 +24,8 @@ permissions:
 jobs:
   analyze:
     if: ${{ !github.event.repository.private }}
-    # Nothing is built (build-mode none), so no Windows runner is needed.
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
+    runs-on: ${{ matrix.runs-on }}
+    timeout-minutes: 90
     permissions:
       contents: read
       security-events: write
@@ -33,12 +33,16 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # build-mode none: no xmake build (and no LeviLamina download) needed; the hooks into BDS headers
-          # are analyzed less precisely, the network and auth code fully.
+          # C++ is analyzed from a real build: CodeQL watches the compiler, so it sees LeviLamina's hook macros
+          # expanded and the BDS types resolved. Without a build (build-mode none) it took each hook macro for
+          # an unused variable and missed the reads inside the hooks.
           - language: c-cpp
-            build-mode: none
+            build-mode: manual
+            runs-on: windows-latest
+          # Workflows are not built, so no Windows runner is needed.
           - language: actions
             build-mode: none
+            runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
         with:
@@ -49,6 +53,13 @@ jobs:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
           queries: security-and-quality
+
+      # Between init and analyze, so that the compiler runs are traced. The tests are built too: they are
+      # scanned like the mod.
+      - if: matrix.build-mode == 'manual'
+        uses: ./.github/actions/build
+        with:
+          tests: true
 
       - uses: github/codeql-action/analyze@v4
         with:
