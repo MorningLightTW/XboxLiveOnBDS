@@ -48,7 +48,7 @@ xmake build <stun-test|udp-ports-test|signal-text-test|device-auth-test> && xmak
 - Out of scope, no TODOs: auto friend add/accept, MPSD session rotation, multiple host accounts.
 - MCXboxBroadcast is a wire-format reference only; it transfers players, the opposite of this design.
 - Committed content uses placeholders (`Steve`, `Alex`, `test`), never real gamertags, XUIDs, IPs, emails or local paths.
-- Before anything leaves this machine (push, release, issue or PR text, a workflow that prints or uploads files), read what is going out (`git log -p origin/main..HEAD`, messages included) for those and for tokens, sign-in codes and `data/` contents. Found one: stop and say so, do not push. What reaches GitHub stays readable after it is deleted.
+- Before anything leaves this machine (push, release, issue or PR text, a workflow that prints or uploads files), read what is going out (`git log -p origin/main..HEAD`, messages included) for those and for tokens, sign-in codes and `data/` contents. Found one: stop and say so, do not push. What reaches GitHub stays readable after it is deleted. For a full audit (before a release, before going public, or on request) run the `privacy-audit` agent.
 - `scripts/` are developer tools: change them freely, no backward compatibility or deprecation path.
 - Code beats README. A feature change updates all three READMEs and `## [Unreleased]` in CHANGELOG.
 - Conventional Commits in English, one kind of change per commit, the why in the body, every commit builds. The docs a code change calls for (READMEs, CHANGELOG) go in their own `docs` commit right after it.
