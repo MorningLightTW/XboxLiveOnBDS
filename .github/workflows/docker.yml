@@ -18,30 +18,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: xmake-io/github-action-setup-xmake@v1
-
-      - uses: actions/cache@v6
-        with:
-          path: |
-            ~/AppData/Local/.xmake
-          key: xmake-${{ hashFiles('xmake.lua') }}
-          restore-keys: |
-            xmake-
-
-      - name: Setup LLVM
-        uses: ZhongRuoyu/setup-llvm@v0
-        with:
-          llvm-version: 22
-
-      - run: |
-          xmake repo -u
-
-      - run: |
-          xmake f -a x64 -m release -p windows --target_type=server -y
-
-      - name: Build the mod
-        run: |
-          xmake -w -y
+      - uses: ./.github/actions/build
 
       - uses: actions/upload-artifact@v7
         with:

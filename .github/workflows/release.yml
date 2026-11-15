@@ -50,44 +50,9 @@ jobs:
           fi
           bash scripts/bump-version.sh "$VERSION"
 
-      - uses: xmake-io/github-action-setup-xmake@v1
-
-      - uses: actions/cache@v6
+      - uses: ./.github/actions/build
         with:
-          path: |
-            ~/AppData/Local/.xmake
-          key: xmake-${{ hashFiles('xmake.lua') }}
-          restore-keys: |
-            xmake-
-
-      - name: Setup LLVM
-        uses: ZhongRuoyu/setup-llvm@v0
-        with:
-          llvm-version: 22
-
-      - run: |
-          xmake repo -u
-
-      - run: |
-          xmake f -a x64 -m release -p windows --target_type=server -y
-
-      - run: |
-          xmake -w -y
-
-      - name: STUN test
-        run: |
-          xmake build -y stun-test
-          xmake run stun-test
-
-      - name: UDP ports test
-        run: |
-          xmake build -y udp-ports-test
-          xmake run udp-ports-test
-
-      - name: Signal text test
-        run: |
-          xmake build -y signal-text-test
-          xmake run signal-text-test
+          tests: true
 
       - uses: actions/upload-artifact@v7
         with:
