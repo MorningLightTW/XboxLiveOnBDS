@@ -29,7 +29,7 @@
 lip install github.com/MorningLightTW/XboxLiveOnBDS
 ```
 
-lip 會把模組放進 `mods/`，沒有 LeviLamina 的話也會一起裝。之後用 `lip update` 更新。
+lip 會把模組放進 `mods/`，沒有 LeviLamina 的話也會一起裝。之後用 `lip update` 更新。需要 lip 0.40.0 或更新的版本（`lip --version`）；舊版 lip 會說這個套件的 `lip.toml` 無效。
 
 ### 手動安裝
 

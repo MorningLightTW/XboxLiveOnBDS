@@ -29,7 +29,7 @@ With the server stopped, run this in the server folder:
 lip install github.com/MorningLightTW/XboxLiveOnBDS
 ```
 
-lip puts the mod into `mods/` and installs LeviLamina too if it is missing. Update later with `lip update`.
+lip puts the mod into `mods/` and installs LeviLamina too if it is missing. Update later with `lip update`. This needs lip 0.40.0 or newer (`lip --version`); an older lip answers that the package's `lip.toml` is not valid.
 
 ### By hand
 
