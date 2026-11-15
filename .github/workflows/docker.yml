@@ -103,7 +103,8 @@ jobs:
               set -e
               mkdir -p /data/.tmp
               wineboot --init
-              xvfb-run -a winetricks -q vcrun2026
+              # Its x86 installer can fail under Wine (status 130); the entrypoint goes on regardless, so do we.
+              xvfb-run -a winetricks -q vcrun2026 || echo "winetricks vcrun2026 failed ($?); going on like the image"
               wget -qO /tmp/dotnet.zip \
                 https://builds.dotnet.microsoft.com/dotnet/Runtime/10.0.5/dotnet-runtime-10.0.5-win-x64.zip
               mkdir -p "/data/.wine/drive_c/Program Files/dotnet"
