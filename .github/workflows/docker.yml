@@ -78,6 +78,8 @@ jobs:
             opts+=(--security-opt seccomp=unconfined)
           fi
           docker pull "${{ matrix.image }}"
+          # The tag moves (the point is to try the image people get today): note which image this run got.
+          echo "image: $(docker image inspect --format '{{index .RepoDigests 0}}' "${{ matrix.image }}")"
           if [[ "$RUNNER_OS" != "Windows" ]]; then
             # The image's entrypoint installs .NET with "winetricks dotnet10", whose x86 installer fails under Wine
             # (status 2), so lip (a .NET program) cannot install BDS. Set up the prefix the way the entrypoint does,
@@ -90,6 +92,9 @@ jobs:
               xvfb-run -a winetricks -q vcrun2026 || echo "winetricks vcrun2026 failed ($?); going on like the image"
               wget -qO /tmp/dotnet.zip \
                 https://builds.dotnet.microsoft.com/dotnet/Runtime/10.0.5/dotnet-runtime-10.0.5-win-x64.zip
+              # SHA-512 of that zip, so a changed or cut-off download stops here.
+              echo "d9ac15a79dce6dd995e1317e71a90b5843b6dd40601f37da4c3f6472d4ec6b40caaafcf50508fcfc6229e6b2440f4ddbad3f11517556d401c638ffb839efb5aa  /tmp/dotnet.zip" \
+                | sha512sum -c -
               mkdir -p "/data/.wine/drive_c/Program Files/dotnet"
               unzip -q /tmp/dotnet.zip -d "/data/.wine/drive_c/Program Files/dotnet"
               wineserver -w
@@ -99,13 +104,19 @@ jobs:
             -v "$src:${{ matrix.data }}" "${{ matrix.image }}"
           # Written as it comes (the sign-in code redacted: it is not meant for a public log), so the log is there
           # even when the run is cancelled or times out. Keeps running into the later steps.
-          nohup sh -c "docker logs -f bds 2>&1 | sed -u -E 's/(enter the code )[A-Za-z0-9-]+/\1<redacted>/' > server.log" \
+          # Two rules, so that rewording one of the mod's two sign-in lines does not let the code through: the
+          # line after "Sign in the Xbox account" is dropped whole, and so is whatever follows "enter the code".
+          nohup sh -c "docker logs -f bds 2>&1 | sed -u -E \
+            -e '/Sign in the Xbox account/{n;s/.*/<sign-in line redacted>/;}' \
+            -e 's/(enter the code )[A-Za-z0-9-]+/\1<redacted>/' > server.log" \
             > /dev/null 2>&1 &
 
       - name: Wait for the mod and the server
         run: |
           result=timeout
-          for i in $(seq 1 240); do
+          # 30 minutes at most: with the steps before it, that ends well inside the job's 50, so a server that
+          # never comes up is reported here (with its log) and not cut off by the job's timeout.
+          for i in $(seq 1 180); do
             if ! docker ps -q --filter name=bds | grep -q .; then result=exited; break; fi
             if grep -q "Could not start the Microsoft account sign-in" server.log; then result=no-https; break; fi
             if grep -q -E "refusing to create a configuration directory|wine: socket : Function not implemented" \
