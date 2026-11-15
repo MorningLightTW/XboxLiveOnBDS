@@ -133,7 +133,8 @@ jobs:
             fi
             # Progress, visible while the step runs: how far the log is, and its last line with text in it.
             if (( i % 6 == 0 )); then
-              last=$(grep -v -E "fixme:|^[[:space:]]*$" server.log | tail -n 1 | tr -d '\r' | cut -c1-200)
+              # grep finds nothing while the log has no text yet: that must not end the step (bash -e, pipefail).
+              last=$(grep -v -E "fixme:|^[[:space:]]*$" server.log | tail -n 1 | tr -d '\r' | cut -c1-200 || true)
               echo "[$((i / 6)) min] $(wc -l < server.log) lines | $last"
             fi
             sleep 10
