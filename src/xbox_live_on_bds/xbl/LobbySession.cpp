@@ -78,6 +78,11 @@ std::string randomHex(std::size_t bytes) {
     return out;
 }
 
+/// The Friends tab's player count. A world the game hosts counts its host, so the server counts as one more
+/// player, but only while that stays below the limit: one free slot must not show as full. Never below 1, or the
+/// Friends tab hides the world.
+int memberCount(int players, int maxPlayers) { return std::max(players + 1 < maxPlayers ? players + 1 : players, 1); }
+
 } // namespace
 
 struct LobbySession::Impl {
@@ -149,8 +154,7 @@ struct LobbySession::Impl {
                 {"Joinability", "joinable_by_friends"},
                 {"LanGame", false},
                 {"MaxMemberCount", i.maxPlayers},
-                // A world the game hosts always has its host in it; an empty-looking one may be hidden.
-                {"MemberCount", std::max(i.players, 1)},
+                {"MemberCount", memberCount(i.players, i.maxPlayers)},
                 {"OnlineCrossPlatformGame", true},
                 {"SupportedConnections",
                  json::array(
