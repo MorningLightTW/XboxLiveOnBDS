@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Show the server in the host Xbox account's Friends tab, so friends can join with one tap.
+- Show the server in the host Xbox account's Friends tab, so friends can join with one tap. Its player count counts the host account as one player, like a world the game hosts, but only while that stays below `max-players`, so a server with a free slot never shows as full.
 - Friends join BDS directly through its own NetherNet transport: no public IP or port forwarding needed. Like a world hosted by the game, Xbox Live joins use only Microsoft's relay servers; other NetherNet joins (LAN, by address) keep the server's own STUN servers.
 - Sign in once with a Microsoft device code; the sign-in is kept in `data/auth.json` and refreshed on its own, and is only dropped when Microsoft itself refuses it.
 - The server stays in the Friends tab when Xbox Live closes one of its connections: the dropped connection is replaced on its own.
