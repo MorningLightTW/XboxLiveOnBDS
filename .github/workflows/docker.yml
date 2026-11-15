@@ -1,0 +1,126 @@
+name: Docker
+
+# Runs the mod in LeviLamina's Docker images (ghcr.io/liteldev/levilamina-server): a Linux container (BDS under
+# Wine) and a Windows container. Passes when the mod loads, reaches Microsoft over WinHTTP (the sign-in code is
+# shown) and the server starts. Nobody signs in, so Xbox Live's WebSockets and friends' joins are not covered.
+#
+#   gh workflow run docker.yml
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: xmake-io/github-action-setup-xmake@v1
+
+      - uses: actions/cache@v6
+        with:
+          path: |
+            ~/AppData/Local/.xmake
+          key: xmake-${{ hashFiles('xmake.lua') }}
+          restore-keys: |
+            xmake-
+
+      - name: Setup LLVM
+        uses: ZhongRuoyu/setup-llvm@v0
+        with:
+          llvm-version: 22
+
+      - run: |
+          xmake repo -u
+
+      - run: |
+          xmake f -a x64 -m release -p windows --target_type=server -y
+
+      - name: Build the mod
+        run: |
+          xmake -w -y
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: mod
+          path: |
+            bin/
+
+  run:
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: wine
+            runs-on: ubuntu-latest
+            image: ghcr.io/liteldev/levilamina-server:latest-wine
+            data: /data
+          # The image is built on Windows Server 2022: its runner can run it with process isolation.
+          - name: windows
+            runs-on: windows-2022
+            image: ghcr.io/liteldev/levilamina-server:latest-windows
+            data: C:\data
+    name: run (${{ matrix.name }})
+    runs-on: ${{ matrix.runs-on }}
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: mod
+          path: bin
+
+      - name: Start the server
+        run: |
+          version=$(sed -nE 's/^local levilamina_version = "([^"]+)".*/\1/p' xmake.lua)
+          mkdir -p data/mods
+          cp -r bin/xbox-live-on-bds data/mods/
+          src="$PWD/data"
+          if [[ "$RUNNER_OS" == "Windows" ]]; then src=$(cygpath -w "$src"); fi
+          docker pull "${{ matrix.image }}"
+          docker run -d -i --name bds -e EULA=TRUE -e VERSION="$version" \
+            -v "$src:${{ matrix.data }}" "${{ matrix.image }}"
+
+      # The sign-in code is redacted: it is only good for 15 minutes, but it is not meant for a public log.
+      - name: Wait for the mod and the server
+        run: |
+          redact() { sed -E 's/(enter the code )[A-Za-z0-9-]+/\1<redacted>/'; }
+          result=timeout
+          for i in $(seq 1 330); do
+            log=$(docker logs bds 2>&1 | redact)
+            if ! docker ps -q --filter name=bds | grep -q .; then result=exited; break; fi
+            if grep -q "Could not start the Microsoft account sign-in" <<<"$log"; then result=no-https; break; fi
+            if grep -q "Sign in the Xbox account" <<<"$log" && grep -q "Server started" <<<"$log"; then
+              result=ok; break
+            fi
+            sleep 10
+          done
+          echo "$log" > server.log
+          echo "::group::Server log"; cat server.log; echo "::endgroup::"
+          echo "result: $result"
+          grep -q "xbox-live-on-bds loaded" server.log || { echo "::error::The mod did not load"; exit 1; }
+          case "$result" in
+            ok) echo "The mod loaded, reached Microsoft over HTTPS and the server started" ;;
+            no-https) echo "::error::The mod could not reach Microsoft over HTTPS (WinHTTP)"; exit 1 ;;
+            exited) echo "::error::The server exited"; exit 1 ;;
+            *) echo "::error::Timed out waiting for the sign-in code and the server"; exit 1 ;;
+          esac
+
+      - name: Stop the server
+        if: always()
+        run: docker rm -f bds || true
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: server-log-${{ matrix.name }}
+          path: server.log
+          if-no-files-found: ignore
