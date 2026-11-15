@@ -27,10 +27,12 @@ runs:
         restore-keys: |
           xmake-
 
+    # The LLVM line the code is developed and formatted with (23.1.x). The action takes a version prefix and
+    # installs its newest release, so a full version such as 23.1.2 cannot be given.
     - name: Setup LLVM
       uses: ZhongRuoyu/setup-llvm@eea6238baf53d41c1615923680d7a738da584318 # v0.2.0
       with:
-        llvm-version: 22
+        llvm-version: "23.1"
 
     - shell: pwsh
       run: |
