@@ -7,8 +7,6 @@ on:
       - main
     paths: &code
       - "src/**"
-      - "src-server/**"
-      - "src-client/**"
       - "tests/**"
       # The actions language scans every workflow and the local actions.
       - ".github/workflows/**"

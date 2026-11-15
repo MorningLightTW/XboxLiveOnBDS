@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # PostToolUse hook: formats a C++ file Claude Code just wrote or edited with the repo's .clang-format.
 # Plain bash, so it runs the same on Windows (Git Bash) and Linux/macOS, without jq. Only touches .cpp/.h under
-# src/, src-server/ and tests/, and never fails the tool call.
+# src/ and tests/, and never fails the tool call.
 want=23.1.2 # The version CI checks with (.github/workflows/ci.yml); another version may format differently.
 
 payload=$(cat)
@@ -25,7 +25,7 @@ case "$root" in
     ;;
 esac
 case "$relative" in
-src/*.cpp | src/*.h | src-server/*.cpp | src-server/*.h | tests/*.cpp | tests/*.h) ;;
+src/*.cpp | src/*.h | tests/*.cpp | tests/*.h) ;;
 *) exit 0 ;;
 esac
 [ -f "$path" ] || exit 0
