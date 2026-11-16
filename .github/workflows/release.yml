@@ -101,7 +101,7 @@ jobs:
           cp CHANGELOG.md LICENSE README.md artifact/
           (cd artifact && zip -r "$RUNNER_TEMP/$ZIP_NAME" .)
           unzip -l "$RUNNER_TEMP/$ZIP_NAME"
-          (cd "$RUNNER_TEMP" && sha256sum "$ZIP_NAME" | tee "$ZIP_NAME.sha256")
+          sha256sum "$RUNNER_TEMP/$ZIP_NAME"
 
       # archive: false uploads the zip as it is (under its own file name), not zipped once more.
       - name: Keep the zip (dry run)
@@ -134,7 +134,7 @@ jobs:
             git commit -am "build: release v$VERSION"
             git push origin HEAD:main
           fi
-          gh release create "v$VERSION" "$RUNNER_TEMP/$ZIP_NAME" "$RUNNER_TEMP/$ZIP_NAME.sha256" \
+          gh release create "v$VERSION" "$RUNNER_TEMP/$ZIP_NAME" \
             --target "$(git rev-parse HEAD)" \
             --title "v$VERSION" \
             --notes-file "$RUNNER_TEMP/notes.md"
