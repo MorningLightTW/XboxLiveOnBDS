@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
-- Releases no longer come with a `.sha256` file. The release page shows each download's SHA-256, and `gh attestation verify <zip> -R MorningLightTW/XboxLiveOnBDS` proves the zip was built by this repository's release workflow.
+- Releases no longer come with a `.sha256` file. The release page shows each download's SHA-256.
 
 ## [0.1.1] - 2026-11-15
 
