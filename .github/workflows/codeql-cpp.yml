@@ -1,5 +1,6 @@
-name: CodeQL
+name: CodeQL (C++)
 
+# Runs only when the C++ or how it is built changes; workflows have their own scan (codeql-actions.yml).
 # Code scanning is free for public repositories only, so the job is skipped while the repository is private.
 on:
   push:
@@ -9,9 +10,9 @@ on:
       - "src/**"
       - "tests/**"
       - "xmake.lua"
-      # The actions language scans every workflow and the local actions.
-      - ".github/workflows/**"
-      - ".github/actions/**"
+      # They decide how the C++ is compiled for the analysis.
+      - ".github/actions/build/**"
+      - ".github/workflows/codeql-cpp.yml"
   pull_request:
     paths: *code
   schedule:
@@ -24,25 +25,14 @@ permissions:
 jobs:
   analyze:
     if: ${{ !github.event.repository.private }}
-    runs-on: ${{ matrix.runs-on }}
+    # C++ is analyzed from a real build: CodeQL watches the compiler, so it sees LeviLamina's hook macros
+    # expanded and the BDS types resolved. Without a build (build-mode none) it took each hook macro for an
+    # unused variable and missed the reads inside the hooks.
+    runs-on: windows-latest
     timeout-minutes: 90
     permissions:
       contents: read
       security-events: write
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          # C++ is analyzed from a real build: CodeQL watches the compiler, so it sees LeviLamina's hook macros
-          # expanded and the BDS types resolved. Without a build (build-mode none) it took each hook macro for
-          # an unused variable and missed the reads inside the hooks.
-          - language: c-cpp
-            build-mode: manual
-            runs-on: windows-latest
-          # Workflows are not built, so no Windows runner is needed.
-          - language: actions
-            build-mode: none
-            runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
         with:
@@ -51,13 +41,11 @@ jobs:
       # xmake does its part before init. Once CodeQL traces the job, xmake can no longer start other programs
       # (git: "packages(git): must be installed"; clang-cl: "The data area passed to a system call is too small"),
       # so it only sets the build up and writes down the compile commands.
-      - if: matrix.build-mode == 'manual'
-        uses: ./.github/actions/build
+      - uses: ./.github/actions/build
         with:
           build: false
 
       - name: Write the compile commands
-        if: matrix.build-mode == 'manual'
         shell: pwsh
         run: |
           xmake project -k compile_commands
@@ -68,14 +56,13 @@ jobs:
 
       - uses: github/codeql-action/init@v4
         with:
-          languages: ${{ matrix.language }}
-          build-mode: ${{ matrix.build-mode }}
+          languages: c-cpp
+          build-mode: manual
           queries: security-and-quality
 
       # Between init and analyze, so that the compiler runs are traced: each compile command is run as xmake
       # would run it, without xmake. Nothing is linked; CodeQL only needs the compiler to see every source file.
       - name: Compile every source file
-        if: matrix.build-mode == 'manual'
         shell: pwsh
         run: |
           $failed = Get-Content compile_commands.json -Raw | ConvertFrom-Json | ForEach-Object -Parallel {
@@ -101,4 +88,4 @@ jobs:
 
       - uses: github/codeql-action/analyze@v4
         with:
-          category: /language:${{ matrix.language }}
+          category: /language:c-cpp
