@@ -1,5 +1,8 @@
 #include "xbox_live_on_bds/PingCommand.h"
 
+#include <algorithm>
+#include <cctype>
+#include <exception>
 #include <memory>
 #include <optional>
 #include <string>
@@ -13,17 +16,26 @@
 #include "ll/api/memory/Hook.h"
 #include "ll/api/service/Bedrock.h"
 
+#include "mc/common/SubClientId.h"
 #include "mc/deps/certificates/WebToken.h"
+#include "mc/deps/core/utility/BinaryStream.h"
+#include "mc/deps/core/utility/MCRESULT.h"
 #include "mc/network/ConnectionRequest.h"
 #include "mc/network/MinecraftPacketIds.h"
 #include "mc/network/NetworkIdentifier.h"
 #include "mc/network/NetworkSystem.h"
 #include "mc/network/Packet.h"
 #include "mc/network/ServerNetworkHandler.h"
+#include "mc/network/packet/AvailableCommandsPacket.h"
+#include "mc/server/ServerPlayer.h"
+#include "mc/server/commands/CommandContext.h"
 #include "mc/server/commands/CommandOrigin.h"
 #include "mc/server/commands/CommandOutput.h"
+#include "mc/server/commands/CommandOutputParameter.h"
 #include "mc/server/commands/CommandPermissionLevel.h"
+#include "mc/server/commands/CommandRegistry.h"
 #include "mc/server/commands/CommandSelector.h"
+#include "mc/server/commands/MinecraftCommands.h"
 #include "mc/world/actor/Actor.h"
 #include "mc/world/actor/player/Player.h"
 
@@ -38,8 +50,9 @@ namespace {
 
 using namespace ll::i18n_literals;
 
-constexpr std::string_view CommandName = "xbl";
-constexpr auto             Description = "XboxLiveOnBDS: your connection to this server"_trl;
+constexpr std::string_view CommandName       = "xbl";
+constexpr char             TargetParamName[] = "player"; // The member of PingTargetParam.
+constexpr auto             Description       = "XboxLiveOnBDS: your connection to this server"_trl;
 
 ll::io::Logger* logger = nullptr;
 std::string     registeredDescription; // As registered, in the server's language; set before the hook goes in.
@@ -103,6 +116,66 @@ std::optional<std::string> localizeCommandList(NetworkIdentifier const& id, std:
     return out;
 }
 
+bool isTargetOverload(AvailableCommandsPacketPayload::OverloadData const& overload) {
+    auto const& params = overload.params.get();
+    return std::ranges::any_of(params, [](auto const& param) { return param.name.get() == TargetParamName; });
+}
+
+AvailableCommandsPacketPayload::CommandData* findCommand(AvailableCommandsPacketPayload& payload) {
+    for (auto& command : payload.mCommands.get()) {
+        if (command.name.get() == CommandName) return &command;
+    }
+    return nullptr;
+}
+
+/// Whether the player may name other players: the same rule as the check inside the command.
+bool canTargetOthers(Player const& player) {
+    return player.getCommandPermissionLevel() >= CommandPermissionLevel::GameDirectors;
+}
+
+/// The serialized command list without "/xbl ping <player>", or nullopt to send it as is. BDS builds one list for
+/// everyone, and the client hides whole commands only, so the overload is cut out for each player who may not use it.
+std::optional<std::string>
+hideTargetOverload(NetworkIdentifier const& id, Packet const& packet, std::string const& data) {
+    auto handler = ll::service::getServerNetworkHandler();
+    if (!handler) return std::nullopt;
+    auto* player = handler->_getServerPlayer(id, SubClientId::PrimaryClient);
+    if (player && canTargetOthers(*player)) return std::nullopt;
+
+    auto& original = static_cast<AvailableCommandsPacket const&>(packet);
+    bool  present  = false;
+    for (auto const& command : original.mCommands.get()) {
+        if (command.name.get() != CommandName) continue;
+        present = std::ranges::any_of(command.overloads.get(), isTargetOverload);
+        break;
+    }
+    if (!present) return std::nullopt;
+
+    auto registry = ll::service::getCommandRegistry();
+    if (!registry) return std::nullopt;
+    auto fresh   = registry->serializeAvailableCommands();
+    auto command = findCommand(fresh);
+    if (!command) return std::nullopt;
+    std::erase_if(command->overloads.get(), isTargetOverload);
+
+    BinaryStream before;
+    original.write(before);
+    BinaryStream after;
+    fresh.write(after);
+    auto const& oldBody = before.mBuffer;
+    auto const& newBody = after.mBuffer;
+    if (oldBody.size() > data.size() || data.compare(data.size() - oldBody.size(), oldBody.size(), oldBody) != 0) {
+        static bool logged = false;
+        if (!std::exchange(logged, true) && logger) logger->debug("Command list: header not found, sent unchanged");
+        return std::nullopt;
+    }
+    std::string out;
+    out.reserve(data.size() - oldBody.size() + newBody.size());
+    out.append(data, 0, data.size() - oldBody.size());
+    out.append(newBody);
+    return out;
+}
+
 // Every packet to a client passes here once per recipient, already serialized: the command list is the only one
 // touched. Command descriptions reach the client as plain text, so each player's copy is written in their language.
 LL_TYPE_INSTANCE_HOOK(
@@ -115,10 +188,107 @@ LL_TYPE_INSTANCE_HOOK(
     Packet const&            packet,
     std::string const&       data
 ) {
-    if (packet.getId() == MinecraftPacketIds::AvailableCommands) {
-        if (auto localized = localizeCommandList(id, data)) return origin(id, packet, *localized);
-    }
+    if (packet.getId() != MinecraftPacketIds::AvailableCommands) return origin(id, packet, data);
+    try {
+        auto        hidden  = hideTargetOverload(id, packet, data);
+        auto const& current = hidden ? *hidden : data;
+        if (auto localized = localizeCommandList(id, current)) return origin(id, packet, *localized);
+        return origin(id, packet, current);
+    } catch (std::exception const& e) {
+        if (logger) logger->debug("Command list: {}", e.what());
+    } catch (...) {}
     origin(id, packet, data);
+}
+
+// A change of operator rights changes who may see "/xbl ping <player>", so the player gets a fresh list (which
+// passes the hook above).
+LL_TYPE_INSTANCE_HOOK(
+    PermissionChangeHook,
+    ll::memory::HookPriority::Normal,
+    Player,
+    &Player::setCommandPermissions,
+    void,
+    CommandPermissionLevel permissions
+) {
+    bool before = canTargetOthers(*this);
+    origin(permissions);
+    try {
+        if (isSimulatedPlayer() || before == canTargetOthers(*this)) return;
+        if (auto registry = ll::service::getCommandRegistry()) registry->serializeAvailableCommands().sendTo(*this);
+    } catch (std::exception const& e) {
+        if (logger) logger->debug("Command list refresh: {}", e.what());
+    } catch (...) {}
+}
+
+// Vanilla's syntax error shows at most this many characters around the bad token.
+constexpr size_t SyntaxContextBefore = 10;
+constexpr size_t SyntaxContextAfter  = 10;
+
+// The text of the command being executed on this thread, or null. It is set by the hook below.
+thread_local std::string const* currentCommandText = nullptr;
+
+struct CommandTextScope {
+    std::string const* previous;
+    explicit CommandTextScope(std::string const& text) : previous(std::exchange(currentCommandText, &text)) {}
+    ~CommandTextScope() { currentCommandText = previous; }
+    CommandTextScope(CommandTextScope const&)            = delete;
+    CommandTextScope& operator=(CommandTextScope const&) = delete;
+};
+
+// The lambda of an overload cannot see the typed text, so every command records it for the duration of its run.
+LL_TYPE_INSTANCE_HOOK(
+    RecordCommandTextHook,
+    ll::memory::HookPriority::Normal,
+    MinecraftCommands,
+    &MinecraftCommands::executeCommand,
+    MCRESULT,
+    CommandContext& context,
+    bool            suppressOutput
+) {
+    CommandTextScope scope(context.mCommand);
+    return origin(context, suppressOutput);
+}
+
+/// Where the argument of "/xbl ping <arg>" starts and ends in the typed text; an empty range at the end if the
+/// text does not look like that.
+std::pair<size_t, size_t> pingArgumentRange(std::string_view text) {
+    size_t at        = 0;
+    auto   skipSpace = [&] {
+        while (at < text.size() && std::isspace(static_cast<unsigned char>(text[at]))) ++at;
+    };
+    auto skipWord = [&](std::string_view word) {
+        if (text.size() - at < word.size()) return false;
+        for (size_t i = 0; i < word.size(); ++i) {
+            if (std::tolower(static_cast<unsigned char>(text[at + i])) != word[i]) return false;
+        }
+        at += word.size();
+        return at == text.size() || std::isspace(static_cast<unsigned char>(text[at]));
+    };
+    if (at < text.size() && text[at] == '/') ++at;
+    if (skipWord("xbl")) {
+        skipSpace();
+        if (skipWord("ping")) {
+            skipSpace();
+            size_t end = at;
+            while (end < text.size() && !std::isspace(static_cast<unsigned char>(text[end]))) ++end;
+            if (end > at) return {at, end};
+        }
+    }
+    return {text.size(), text.size()};
+}
+
+/// Vanilla's syntax error for the argument of "/xbl ping": the client translates it itself.
+void syntaxError(CommandOutput& output) {
+    std::string_view text = currentCommandText ? std::string_view{*currentCommandText} : std::string_view{};
+    auto [start, end]     = pingArgumentRange(text);
+    auto from             = start > SyntaxContextBefore ? start - SyntaxContextBefore : 0;
+    auto to               = std::min(text.size(), end + SyntaxContextAfter);
+    output.error(
+        "commands.generic.syntax",
+        {CommandOutputParameter{std::string{text.substr(from, start - from)}},
+         CommandOutputParameter{std::string{text.substr(start, end - start)}},
+         CommandOutputParameter{std::string{text.substr(end, to - end)}}}
+    );
 }
 
 std::string routeText(std::string_view locale, PingCommandSources const& sources, Player const& player, bool relay) {
@@ -176,7 +346,7 @@ void registerPingCommand(ll::io::Logger& log, PingCommandSources sources) {
         registeredDescription,
         CommandPermissionLevel::Any
     );
-    static ll::memory::HookRegistrar<LocalizeCommandListHook> registrar;
+    static ll::memory::HookRegistrar<LocalizeCommandListHook, PermissionChangeHook, RecordCommandTextHook> registrar;
 
     command.overload().text("ping").execute([shared](CommandOrigin const& origin, CommandOutput& output) {
         auto  locale = origin.getLocaleCode();
@@ -188,27 +358,28 @@ void registerPingCommand(ll::io::Logger& log, PingCommandSources sources) {
         report(*shared, locale, output, *static_cast<Player*>(entity), true);
     });
 
-    command.overload<PingTargetParam>().text("ping").required("player").execute(
-        [shared](CommandOrigin const& origin, CommandOutput& output, PingTargetParam const& param) {
-            auto  locale  = origin.getLocaleCode();
+    command.overload<PingTargetParam>()
+        .text("ping")
+        .required(TargetParamName)
+        .execute([shared](CommandOrigin const& origin, CommandOutput& output, PingTargetParam const& param) {
+            auto locale = origin.getLocaleCode();
+            // Naming a player takes operator rights, whatever the selector matches (the console has them). The command
+            // list hides this overload from other players. If one types it anyway, they get the vanilla syntax error,
+            // as if the overload did not exist, so they cannot tell that the argument exists.
+            if (origin.getPermissionsLevel() < CommandPermissionLevel::GameDirectors) {
+                syntaxError(output);
+                return;
+            }
             auto  results = param.player.results(origin);
             auto* self    = origin.getEntity();
             if (results.empty()) {
                 output.error(escapePercent("No player matched."_trl(locale)));
                 return;
             }
-            // Anyone may name themselves; looking at others takes operator rights (the console has them).
-            bool others = false;
-            for (Player* player : results) others = others || player != self;
-            if (others && origin.getPermissionsLevel() < CommandPermissionLevel::GameDirectors) {
-                output.error(escapePercent("Only operators can view other players' connections."_trl(locale)));
-                return;
-            }
             for (Player* player : results) {
                 if (player) report(*shared, locale, output, *player, player == self);
             }
-        }
-    );
+        });
 }
 
 } // namespace xbox_live_on_bds

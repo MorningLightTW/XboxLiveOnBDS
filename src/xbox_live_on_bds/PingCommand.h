@@ -14,7 +14,8 @@ namespace xbox_live_on_bds {
 
 /// "/xbl ping": a player's own connection to the server: how it is carried (an Xbox Live friend join, direct or
 /// through Microsoft's relay, or another kind), ping, jitter and packet loss, in the player's game language. No
-/// addresses or ids. "/xbl ping <player>" shows others' and needs operator rights (anyone may name themselves).
+/// addresses or ids. "/xbl ping <player>" shows others' and needs operator rights; for other players it is hidden from
+/// the command list and fails with the vanilla syntax error.
 struct PingCommandSources {
     std::function<std::optional<LinkMonitor::Stats>(Player const&)> stats;
     std::function<bool(NetworkIdentifier const&)>                   joinedThroughXboxLive;

@@ -13,7 +13,6 @@
     "Jitter: measuring": "Jitter: measuring",
     "Packet loss: {:.1f}% now, {:.1f}% average": "Packet loss: {:.1f}% now, {:.1f}% average",
     "Connected {:.0f} min, {}% of it through a relay": "Connected {:.0f} min, {}% of it through a relay",
-    "Only operators can view other players' connections.": "Only operators can view other players' connections.",
     "Name a player when running this outside the game.": "Name a player when running this outside the game.",
     "No player matched.": "No player matched.",
     "No connection data for {} yet.": "No connection data for {} yet."

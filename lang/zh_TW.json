@@ -13,7 +13,6 @@
     "Jitter: measuring": "抖動：測量中",
     "Packet loss: {:.1f}% now, {:.1f}% average": "封包遺失：目前 {:.1f}%，平均 {:.1f}%",
     "Connected {:.0f} min, {}% of it through a relay": "已連線 {:.0f} 分鐘，其中 {}% 的時間經中繼",
-    "Only operators can view other players' connections.": "只有管理員可以查看其他玩家的連線。",
     "Name a player when running this outside the game.": "在遊戲外執行時請指定玩家。",
     "No player matched.": "找不到符合的玩家。",
     "No connection data for {} yet.": "還沒有 {} 的連線資料。"
