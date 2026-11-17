@@ -65,7 +65,7 @@ You add friends yourself with the host account; the mod does not do it for you.
 
 ## Check your connection
 
-Any player can run `/xbl ping` to see their own connection: whether they came in from the Xbox Live Friends tab, whether it is direct (P2P) or through Microsoft's relay, ping, jitter and packet loss. It shows no IP addresses. Operators (and the console) can look at others with `/xbl ping <player>`. The text, and the command's description in the command list, follow the player's game language (English, Traditional Chinese, Simplified Chinese; others get English). The translations are in `mods/xbox-live-on-bds/lang/`.
+Any player can run `/xbl ping` to see their own connection: whether they came in from the Xbox Live Friends tab, whether it is direct (P2P) or through Microsoft's relay, ping, jitter and packet loss. It shows no IP addresses. Operators (and the console) can look at others with `/xbl ping <player>`. Only they can use this form, and only they see it in the command list. The text, and the command's description in the command list, follow the player's game language (English, Traditional Chinese, Simplified Chinese; others get English). The translations are in `mods/xbox-live-on-bds/lang/`.
 
 ## Settings
 

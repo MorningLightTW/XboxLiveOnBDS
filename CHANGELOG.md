@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- `/xbl ping <player>` is for operators only: other players no longer see it in the command list and cannot run it, also not on themselves. They use `/xbl ping`.
+
 ### Removed
 
 - Releases no longer come with a `.sha256` file. The release page shows each download's SHA-256.
