@@ -16,7 +16,7 @@ The server hosts as an Xbox account (the host account), and that account's frien
 
 ## Requirements
 
-- BDS 26.60.6 with LeviLamina 26.60.7, on Windows
+- BDS 26.60.6 with LeviLamina 26.60.8, on Windows
 - An Xbox account to host as. A separate account made for this is recommended
 
 ## Install

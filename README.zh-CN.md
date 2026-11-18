@@ -16,7 +16,7 @@
 
 ## 需求
 
-- Windows 上的 BDS 26.60.6 与 LeviLamina 26.60.7
+- Windows 上的 BDS 26.60.6 与 LeviLamina 26.60.8
 - 一个 Xbox 账号作为主机账号，建议另外注册一个专用的
 
 ## 安装
