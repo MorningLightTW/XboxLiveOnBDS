@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Built for LeviLamina 26.60.8.
 
+### Fixed
+
+- The console log no longer shows parts of sign-in tokens when Microsoft sends an unexpected answer, and no longer shows the ids of friends' joins outside the debug log.
+
 ### Added
 
 - If this version of the mod does not fit the server's LeviLamina or BDS version, the console says so and the server stays out of the Friends tab, instead of showing a world that friends cannot join.
