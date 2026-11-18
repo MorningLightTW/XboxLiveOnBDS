@@ -52,6 +52,11 @@ std::string HttpResponse::describe() const {
     return fmt::format("HTTP {}: {}{}", status, body.substr(0, Limit), body.size() > Limit ? "..." : "");
 }
 
+std::string HttpResponse::describeStatus() const {
+    if (!error.empty()) return error;
+    return fmt::format("HTTP {}, {} bytes", status, body.size());
+}
+
 HttpResponse request(std::string_view method, std::string_view url, Headers const& headers, std::string_view body) {
     HttpResponse res;
     HINTERNET    s = session();

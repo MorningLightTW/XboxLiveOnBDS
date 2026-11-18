@@ -83,6 +83,9 @@ std::optional<json> parseJson(std::string const& body) {
     return j;
 }
 
+/// For a failed or unparseable response: the body text helps with an error status, but a 2xx body may hold tokens.
+std::string describeFailure(net::HttpResponse const& res) { return res.ok() ? res.describeStatus() : res.describe(); }
+
 /// Waits `duration` unless a stop is requested first; false if it was.
 bool waitFor(std::stop_token const& stop, std::chrono::seconds duration) {
     std::mutex                  m;
@@ -234,7 +237,7 @@ struct XboxAuth::Impl {
         bool refused = res.error.empty() && res.status >= 400 && res.status < 500 && res.status != 429 && j
                     && j->is_object() && j->contains("error");
         if (!refused) {
-            logger.warn("Could not reach Microsoft to refresh the sign-in ({}); will try again", res.describe());
+            logger.warn("Could not reach Microsoft to refresh the sign-in ({}); will try again", describeFailure(res));
             return Refresh::Unreachable;
         }
         logger.warn("Could not refresh the Microsoft account sign-in ({}), signing in again", res.describe());
@@ -257,7 +260,7 @@ struct XboxAuth::Impl {
         );
         auto code = parseJson(res.body);
         if (!res.ok() || !code) {
-            logger.error("Could not start the Microsoft account sign-in: {}", res.describe());
+            logger.error("Could not start the Microsoft account sign-in: {}", describeFailure(res));
             return false;
         }
         auto deviceCode = code->at("device_code").get<std::string>();
@@ -296,7 +299,7 @@ struct XboxAuth::Impl {
             // the code the owner is typing in. Keep polling until the code expires.
             std::string error = j && j->is_object() ? j->value("error", "") : "";
             if (error.empty() || !poll.error.empty() || poll.status >= 500 || poll.status == 429) {
-                logger.debug("Could not ask Microsoft about the sign-in ({}); asking again", poll.describe());
+                logger.debug("Could not ask Microsoft about the sign-in ({}); asking again", describeFailure(poll));
                 continue;
             }
             if (error == "authorization_pending") continue;
@@ -362,7 +365,7 @@ struct XboxAuth::Impl {
         );
         auto j = parseJson(res.body);
         if (!res.ok() || !j) {
-            logger.error("Xbox Live device authentication failed: {}", res.describe());
+            logger.error("Xbox Live device authentication failed: {}", describeFailure(res));
             return false;
         }
         device.value    = j->at("Token").get<std::string>();
@@ -395,7 +398,7 @@ struct XboxAuth::Impl {
         );
         auto j = parseJson(res.body);
         if (!res.ok() || !j) {
-            logger.error("Xbox Live SISU authorization failed: {}", res.describe());
+            logger.error("Xbox Live SISU authorization failed: {}", describeFailure(res));
             return res.status == 0 ? -1 : res.status;
         }
         try {
@@ -408,7 +411,7 @@ struct XboxAuth::Impl {
             title.notAfter                  = util::parseIsoTime(t.at("NotAfter").get<std::string>());
             xsts[std::string(relyingParty)] = parseXsts(j->at("AuthorizationToken"));
         } catch (json::exception const& e) {
-            logger.error("Unexpected SISU response ({}): {}", e.what(), res.describe());
+            logger.error("Unexpected SISU response ({}): {}", e.what(), res.describeStatus());
             return -1;
         }
         save();
@@ -438,13 +441,14 @@ struct XboxAuth::Impl {
         auto j = parseJson(res.body);
         if (!res.ok() || !j) {
             // 401 with XErr 2148916233 = no Xbox profile, 2148916238 = child account needing family consent.
-            if (res.status != 401) logger.error("XSTS authorization for {} failed: {}", relyingParty, res.describe());
+            if (res.status != 401)
+                logger.error("XSTS authorization for {} failed: {}", relyingParty, describeFailure(res));
             return res.status == 0 ? -1 : res.status;
         }
         try {
             xsts[std::string(relyingParty)] = parseXsts(*j);
         } catch (json::exception const& e) {
-            logger.error("Unexpected XSTS response ({}): {}", e.what(), res.describe());
+            logger.error("Unexpected XSTS response ({}): {}", e.what(), res.describeStatus());
             return -1;
         }
         save();
@@ -504,12 +508,12 @@ struct XboxAuth::Impl {
         );
         auto j = parseJson(res.body);
         if (!res.ok() || !j) {
-            logger.error("PlayFab sign-in failed: {}", res.describe());
+            logger.error("PlayFab sign-in failed: {}", describeFailure(res));
             return std::nullopt;
         }
         std::string ticket = j->value("/data/SessionTicket"_json_pointer, std::string{});
         if (ticket.empty()) {
-            logger.error("PlayFab sign-in returned no session ticket: {}", res.describe());
+            logger.error("PlayFab sign-in returned no session ticket: {}", res.describeStatus());
             return std::nullopt;
         }
 
@@ -543,7 +547,7 @@ struct XboxAuth::Impl {
         );
         j = parseJson(res.body);
         if (!res.ok() || !j) {
-            logger.error("Minecraft services sign-in failed: {}", res.describe());
+            logger.error("Minecraft services sign-in failed: {}", describeFailure(res));
             return std::nullopt;
         }
         MinecraftSession session;
@@ -562,7 +566,7 @@ struct XboxAuth::Impl {
             }
         }
         if (session.authorizationHeader.empty() || session.notAfter == 0) {
-            logger.error("Unexpected Minecraft services response: {}", res.describe());
+            logger.error("Unexpected Minecraft services response: {}", res.describeStatus());
             return std::nullopt;
         }
         minecraft = session;

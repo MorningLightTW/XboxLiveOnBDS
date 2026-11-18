@@ -17,6 +17,8 @@ struct HttpResponse {
     [[nodiscard]] bool ok() const { return error.empty() && status >= 200 && status < 300; }
     /// Short description for logs: the transport error, or the status plus the start of the body.
     [[nodiscard]] std::string describe() const;
+    /// Like describe(), but never shows body text: for responses whose body may hold credentials.
+    [[nodiscard]] std::string describeStatus() const;
 };
 
 /// Blocking HTTPS request through WinHTTP. Never call this on the server thread.
