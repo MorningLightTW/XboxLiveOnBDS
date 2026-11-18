@@ -3,7 +3,7 @@ add_rules("mode.debug", "mode.release")
 add_repositories("levimc-repo https://github.com/LiteLDev/xmake-repo.git")
 
 -- Minecraft Bedrock 26.60.6 (BDS) <-> LeviLamina 26.60.x
-local levilamina_version = "26.60.7"
+local levilamina_version = "26.60.8"
 
 -- Keep lip.toml's "version" in sync.
 local mod_version = "0.1.2"
