@@ -25,12 +25,18 @@ void install(ll::io::Logger& logger);
 /// Whether the transport has been seen yet (it is, once it handles its first signal after start).
 [[nodiscard]] bool ready();
 
-/// Gets the transport seen before any friend joins: BDS's HTTP signaling on `port` hands a request to the
-/// transport, which turns down an empty offer at once (CONNECTERROR, no peer connection). Blocks for that
-/// request; call it off the game's threads. Returns ready().
+/// Gets the transport seen before any friend joins, and checks that the mod reads its internals right: BDS's HTTP
+/// signaling on `port` hands a probe request to the transport, which turns down an empty offer at once
+/// (CONNECTERROR, no peer connection). The hooks compare what they read of the probe with BDS's own text for its
+/// id. Runs the probe until the layout is verified (then it returns at once). Blocks for the request and up to
+/// about a second more; call it off the game's threads.
+/// Returns false only when the layout does not match this server's NetherNet: the mod then does nothing with the
+/// transport, and the server must not be published (an error is logged). True otherwise, also when the transport
+/// could not be reached (that is warned about; the check is tried again on the next call).
 bool prime(std::uint16_t port);
 
-/// Delivers "<TYPE> <connection id> <payload>" from the peer `from`. False if the transport is not known yet.
+/// Delivers "<TYPE> <connection id> <payload>" from the peer `from`. False if the transport is not known yet. After a
+/// layout mismatch the signal is dropped and this returns true (a fallback to HTTP signaling would not work either).
 bool deliver(std::uint64_t from, std::string_view signal);
 
 /// Whether a connected player came in through deliver(): a friend joining from the Xbox Live Friends tab, as

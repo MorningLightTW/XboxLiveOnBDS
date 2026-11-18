@@ -110,6 +110,7 @@ struct LobbySession::Impl {
     std::unique_ptr<Signaling>         signaling;
     std::map<std::string, std::string> nonces; // joining XUID -> nonce
     bool                               published = false;
+    bool unsupported = false; // The server's NetherNet is not the one this mod knows; session thread only.
 
     /// Where the host account's activity handle (its Friends-tab entry) points.
     enum class Handle { Ours, Gone, Elsewhere, Unknown };
@@ -509,12 +510,15 @@ struct LobbySession::Impl {
     /// Signaling first, as the game does: a lobby nobody can signal to is not worth listing.
     bool connectAndPublish(std::stop_token const& stop) {
         // Before the server shows up anywhere, so the first friend's join can go straight into BDS's transport.
-        std::function<void()> prepareTransport;
+        std::function<bool()> prepareTransport;
         {
             std::lock_guard lock(mutex);
             prepareTransport = info.prepareTransport;
         }
-        if (prepareTransport) prepareTransport();
+        if (prepareTransport && !prepareTransport()) {
+            unsupported = true; // The transport reported why; nothing is connected or published.
+            return false;
+        }
         std::string error;
         if (!connectSignaling(stop, false, error)) {
             if (!stop.stop_requested()) logger.error("Could not connect to the Minecraft signaling service: {}", error);
@@ -547,13 +551,13 @@ struct LobbySession::Impl {
         while (!stop.stop_requested() && !connectAndPublish(stop)) {
             dropRta();
             dropSignaling();
-            if (stop.stop_requested()) break;
+            if (unsupported || stop.stop_requested()) break;
             logger.warn("Retrying the Xbox Live session in {} s", retryDelay.count());
             std::unique_lock lock(mutex);
             wake.wait_for(lock, stop, retryDelay, [] { return false; });
             retryDelay = std::min<std::chrono::seconds>(retryDelay * 2, MaxRetryDelay);
         }
-        if (!stop.stop_requested()) serve(stop);
+        if (!unsupported && !stop.stop_requested()) serve(stop);
         dropSignaling(); // No more joins.
         leave();
         dropRta();

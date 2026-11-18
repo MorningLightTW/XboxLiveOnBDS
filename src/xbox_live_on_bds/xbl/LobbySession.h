@@ -44,7 +44,9 @@ struct LobbyInfo {
     std::function<void(std::function<void(std::uint64_t to, std::string signal)>)> setInjectSink;
     std::function<void(std::vector<Signaling::TurnServer>)>                        onTurnServers;
     /// Makes `inject` work before the first friend joins; run on the session's own thread before each first publish.
-    std::function<void()> prepareTransport;
+    /// Returns false when the server must not be published (its NetherNet internals are not the ones this mod
+    /// knows): the session then never connects and does not retry.
+    std::function<bool()> prepareTransport;
 };
 
 /// Keeps a joinable-by-friends MinecraftLobby session for the signed-in account in the Xbox Live session

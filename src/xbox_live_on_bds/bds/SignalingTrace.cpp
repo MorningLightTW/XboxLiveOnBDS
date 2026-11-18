@@ -15,6 +15,8 @@
 
 #include "ll/api/io/Logger.h"
 
+#include "xbox_live_on_bds/bds/SignalLayout.h"
+
 #include "mc/deps/nether_net/NetworkID.h"
 #include "mc/deps/nether_net/ServerNegotiator.h"
 #include "mc/deps/nether_net/SimpleNetworkInterfaceImpl.h"
@@ -55,15 +57,8 @@ void dumpSignal(std::string_view direction, std::string_view peer, std::string_v
         << message << "\n\n";
 }
 
-// The signal classes are laid out as { uint64 connection id; payload } (see TransportBridge.cpp).
-struct SignalWithText {
-    std::uint64_t connectionId;
-    std::string   text;
-};
-struct SignalWithCode {
-    std::uint64_t connectionId;
-    int           code;
-};
+using layout::SignalWithCode;
+using layout::SignalWithText;
 
 std::string_view channelName(NetherNet::SignalingChannelId channel) {
     return channel == NetherNet::SignalingChannelId::Lan ? "LAN" : "WebSocket";
@@ -128,12 +123,13 @@ LL_TYPE_INSTANCE_HOOK(
             std::visit(
                 [&](auto const& alternative) {
                     auto const& s = reinterpret_cast<SignalWithText const&>(alternative);
-                    text          = fmt::format("{} {} {}", kinds[signal.index()], s.connectionId, s.text);
+                    if (!layout::plausibleText(s.text)) return; // Not the layout we guessed; see SignalLayout.h.
+                    text = fmt::format("{} {} {}", kinds[signal.index()], s.connectionId, s.text);
                 },
                 signal
             );
         }
-        dumpSignal("-> to", to, text);
+        if (!text.empty()) dumpSignal("-> to", to, text);
     }
     // The return type is opaque here (smaller than the real object), so it is returned straight from origin and
     // never copied; logging therefore happens before the call (same reason as ForwardToPeersHook).

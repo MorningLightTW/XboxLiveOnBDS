@@ -106,7 +106,7 @@ void Mod::startSession() {
         for (auto& s : servers) relays.push_back({std::move(s.urls), std::move(s.username), std::move(s.password)});
         bds::transport_bridge::setRelayServers(std::move(relays));
     };
-    info->prepareTransport = [port = info->localPort] { bds::transport_bridge::prime(port); };
+    info->prepareTransport = [port = info->localPort] { return bds::transport_bridge::prime(port); };
     mSession               = std::make_unique<xbl::LobbySession>(getSelf().getLogger(), *mAuth, std::move(*info));
 }
 

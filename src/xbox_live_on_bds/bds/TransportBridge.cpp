@@ -19,6 +19,7 @@
 #include "ll/api/io/Logger.h"
 
 #include "ll/api/memory/Hook.h"
+#include "xbox_live_on_bds/bds/SignalLayout.h"
 #include "xbox_live_on_bds/net/Http.h"
 
 #include "mc/deps/nether_net/NetworkID.h"
@@ -47,6 +48,17 @@ std::function<void(std::uint64_t to, std::string signal)>      sink;
 int                     sinkCalls = 0;
 std::condition_variable sinkIdle;
 
+/// The connection id of "CONNECTREQUEST <connection id> <offer>"; empty for other signals.
+std::optional<std::uint64_t> connectRequestId(std::string_view signal) {
+    constexpr std::string_view Prefix = "CONNECTREQUEST ";
+    if (!signal.starts_with(Prefix)) return std::nullopt;
+    signal.remove_prefix(Prefix.size());
+    std::uint64_t id{};
+    auto [end, ec] = std::from_chars(signal.data(), signal.data() + signal.size(), id);
+    if (ec != std::errc{} || end == signal.data()) return std::nullopt;
+    return id;
+}
+
 // Reading uses the base class the headers declare. Building still needs placement new of that base, because the
 // NetworkID constructors have no address.
 using NetworkIdBase = std::variant<std::monostate, NetherNet::P2P::NetworkID, NetherNet::Realms::NetworkID>;
@@ -61,20 +73,8 @@ std::optional<std::uint64_t> p2pValue(NetherNet::NetworkID const& id) {
     return std::nullopt;
 }
 
-// The signal classes are opaque in the headers but laid out as { uint64 connection id; payload }, the payload
-// being the SDP / candidate string, or the int error code for ConnectError.
-struct SignalWithText {
-    std::uint64_t connectionId;
-    std::string   text;
-};
-struct SignalWithCode {
-    std::uint64_t connectionId;
-    int           code;
-};
-static_assert(sizeof(SignalWithText) == sizeof(NetherNet::ConnectRequest));
-static_assert(sizeof(SignalWithText) == sizeof(NetherNet::ConnectResponse));
-static_assert(sizeof(SignalWithText) == sizeof(NetherNet::CandidateAdd));
-static_assert(sizeof(SignalWithCode) == sizeof(NetherNet::ConnectError));
+using layout::SignalWithCode;
+using layout::SignalWithText;
 
 // clang-format off
 using Signal =
@@ -82,14 +82,18 @@ using Signal =
 // clang-format on
 using SendResult = NetherNet::ErrorOr<void, NetherNet::ESessionError>;
 
-std::string serialize(Signal const& signal) {
+/// The signal as "<TYPE> <connection id> <payload>"; empty when the text does not look like what the layout guess
+/// says it is (then the layout is wrong: see SignalLayout.h).
+std::optional<std::string> serialize(Signal const& signal) {
     switch (signal.index()) {
     case 0: {
         auto const& s = reinterpret_cast<SignalWithText const&>(std::get<0>(signal));
+        if (!layout::plausibleText(s.text)) return std::nullopt;
         return fmt::format("CONNECTREQUEST {} {}", s.connectionId, s.text);
     }
     case 1: {
         auto const& s = reinterpret_cast<SignalWithText const&>(std::get<1>(signal));
+        if (!layout::plausibleText(s.text) || !s.text.starts_with("v=0")) return std::nullopt;
         return fmt::format("CONNECTRESPONSE {} {}", s.connectionId, s.text);
     }
     case 2: {
@@ -98,12 +102,46 @@ std::string serialize(Signal const& signal) {
     }
     case 3: {
         auto const& s = reinterpret_cast<SignalWithText const&>(std::get<3>(signal));
+        // Empty: the end of the candidates.
+        if (!layout::plausibleText(s.text) || !(s.text.empty() || s.text.starts_with("candidate:"))) {
+            return std::nullopt;
+        }
         return fmt::format("CANDIDATEADD {} {}", s.connectionId, s.text);
     }
     default:
-        return {};
+        return std::nullopt;
     }
 }
+
+// Whether the mod's guesses at BDS's NetherNet layouts hold. prime() checks them with a probe at startup; the hooks
+// check plausibility at run time. Mismatch is final: the mod stops touching the transport and the server is not
+// published.
+enum class Layout { Unchecked, Verified, Mismatch };
+std::atomic<Layout> layoutState{Layout::Unchecked};
+std::atomic<bool>   reportedMismatch{false};
+ll::io::Logger*     logger = nullptr;
+
+void reportMismatch() {
+    layoutState.store(Layout::Mismatch);
+    if (!reportedMismatch.exchange(true) && logger) {
+        logger->error(
+            "This build of XboxLiveOnBDS does not match the NetherNet internals of this server (LeviLamina or BDS "
+            "version), so friends cannot join through Xbox Live and the server is not shown in the Friends tab. "
+            "Update the mod."
+        );
+    }
+}
+
+// The probe prime() sends: while `probeId` is not 0, the hooks look for the signals BDS gives that id, and note
+// whether they read as the layout guesses say. Guarded by `mutex`.
+std::atomic<std::uint64_t> probeId{0};
+struct ProbeResult {
+    bool          receiveSeen = false, receiveOk = false;
+    bool          sendSeen = false, sendOk = false;
+    std::uint64_t connectionId = 0;
+};
+ProbeResult             probeResult;
+std::condition_variable probeSeen;
 
 // Every signal the transport takes in passes here: remember the transport.
 LL_TYPE_INSTANCE_HOOK(
@@ -117,6 +155,22 @@ LL_TYPE_INSTANCE_HOOK(
     NetherNet::SignalingChannelId sourceChannel
 ) {
     transport.store(this);
+    if (auto probe = probeId.load(); probe != 0) {
+        try {
+            // toString() is BDS's own code: it finds the probe without our layout.
+            if (from.toString() == std::to_string(probe)) {
+                auto connection = connectRequestId(message);
+                bool ok         = p2pValue(from) == probe && connection;
+                {
+                    std::lock_guard lock(mutex);
+                    probeResult.receiveSeen  = true;
+                    probeResult.receiveOk    = ok;
+                    probeResult.connectionId = connection.value_or(0);
+                }
+                probeSeen.notify_all();
+            }
+        } catch (...) {}
+    }
     origin(from, message, sourceChannel);
 }
 
@@ -133,6 +187,28 @@ LL_TYPE_INSTANCE_HOOK(
     std::optional<NetherNet::SignalingChannelId> preference
 ) {
     transport.store(this);
+    if (auto probe = probeId.load(); probe != 0) {
+        try {
+            if (networkIDTo.toString() == std::to_string(probe)) {
+                bool ok = p2pValue(networkIDTo) == probe && signal.index() == 2;
+                if (ok) {
+                    auto const& s = reinterpret_cast<SignalWithCode const&>(std::get<2>(signal));
+                    {
+                        std::lock_guard lock(mutex);
+                        ok = s.connectionId == probeResult.connectionId && s.code >= 1 && s.code <= 1000;
+                    }
+                }
+                {
+                    std::lock_guard lock(mutex);
+                    probeResult.sendSeen = true;
+                    probeResult.sendOk   = ok;
+                }
+                probeSeen.notify_all();
+                return origin(networkIDTo, signal, preference); // The probe is no peer's.
+            }
+        } catch (...) {}
+    }
+    if (layoutState.load() == Layout::Mismatch) return origin(networkIDTo, signal, preference);
     if (auto to = p2pValue(networkIDTo)) {
         std::function<void(std::uint64_t, std::string)> target;
         {
@@ -152,14 +228,18 @@ LL_TYPE_INSTANCE_HOOK(
                     sinkIdle.notify_all();
                 }
             } done;
-            target(*to, serialize(signal));
+            std::optional<std::string> text;
+            try {
+                text = serialize(signal);
+            } catch (...) {}
+            if (text) target(*to, std::move(*text));
+            else reportMismatch();
         }
     }
     return origin(networkIDTo, signal, preference);
 }
 
 std::vector<RelayServer> relayServers; // guarded by mutex
-ll::io::Logger*          logger = nullptr;
 std::atomic<bool>        reportedRelaysOnly{false};
 
 // Connection ids of the CONNECTREQUESTs deliver() handed in: Xbox Live friends' joins, as opposed to joins
@@ -190,17 +270,6 @@ constexpr std::size_t             MaxXboxPeers = 1024;
 constexpr auto                    HoldLimit    = std::chrono::seconds(15);
 constexpr std::size_t             MaxHeld      = 512;
 
-/// The connection id of "CONNECTREQUEST <connection id> <offer>"; empty for other signals.
-std::optional<std::uint64_t> connectRequestId(std::string_view signal) {
-    constexpr std::string_view Prefix = "CONNECTREQUEST ";
-    if (!signal.starts_with(Prefix)) return std::nullopt;
-    signal.remove_prefix(Prefix.size());
-    std::uint64_t id{};
-    auto [end, ec] = std::from_chars(signal.data(), signal.data() + signal.size(), id);
-    if (ec != std::errc{} || end == signal.data()) return std::nullopt;
-    return id;
-}
-
 using PeerConnectionResult =
     Bedrock::Result<webrtc::scoped_refptr<webrtc::PeerConnectionInterface>, NetherNet::ESessionError>;
 using AnswerCallback = brstd::move_only_function<void(PeerConnectionResult)>;
@@ -220,6 +289,10 @@ LL_TYPE_INSTANCE_HOOK(
     NetherNet::ConnectRequest const&                         offer,
     AnswerCallback&&                                         onComplete
 ) {
+    if (layoutState.load() == Layout::Mismatch) {
+        origin(config, offer, std::move(onComplete));
+        return;
+    }
     auto connectionId = reinterpret_cast<SignalWithText const&>(offer).connectionId;
     bool xboxJoin = false, relaysOnly = false;
     {
@@ -341,31 +414,52 @@ void onPlayerLeft(NetworkIdentifier const& player) {
 }
 
 bool prime(std::uint16_t port) {
-    if (ready()) return true;
+    if (layoutState.load() == Layout::Verified) return true;
+    if (layoutState.load() == Layout::Mismatch) return false;
     // A NetherNet id no friend has (theirs are random 64-bit values); BDS's reply to it goes nowhere.
-    std::uint64_t probeId = std::random_device{}() | 1;
-    auto          res     = net::request(
+    std::uint64_t id = (static_cast<std::uint64_t>(std::random_device{}()) << 32 | std::random_device{}()) | 1;
+    {
+        std::lock_guard lock(mutex);
+        probeResult = {};
+    }
+    probeId.store(id);
+    auto res = net::request(
         "POST",
-        fmt::format("http://127.0.0.1:{}/v1/join/{}", port, probeId),
+        fmt::format("http://127.0.0.1:{}/v1/join/{}", port, id),
         {
             {"Content-Type", "application/sdp"}
     },
         "v=0"
     );
-    if (ready()) {
-        if (logger) logger->debug("Reached the server's NetherNet transport");
-        return true;
+    // The hooks ran during the request; the wait covers a transport that answers on another thread.
+    ProbeResult seen;
+    {
+        std::unique_lock lock(mutex);
+        probeSeen.wait_for(lock, std::chrono::seconds(1), [] {
+            return probeResult.receiveSeen && probeResult.sendSeen;
+        });
+        seen = probeResult;
     }
-    if (logger) {
+    probeId.store(0);
+    if (seen.receiveSeen && seen.sendSeen && seen.receiveOk && seen.sendOk) {
+        auto expected = Layout::Unchecked;
+        if (layoutState.compare_exchange_strong(expected, Layout::Verified) && logger) {
+            logger->debug("Checked the server's NetherNet layout");
+        }
+    } else if ((seen.receiveSeen && !seen.receiveOk) || (seen.sendSeen && !seen.sendOk)) {
+        reportMismatch();
+    } else if (logger) {
         logger->warn(
-            "Could not reach the server's NetherNet transport ({}); the first friend to join may not get in",
+            "Could not check the server's NetherNet transport ({}); the first friend to join may not get in",
             res.describe()
         );
     }
-    return false;
+    return layoutState.load() != Layout::Mismatch;
 }
 
 bool deliver(std::uint64_t from, std::string_view signal) {
+    // Not the layout we guessed: touch nothing, and drop the signal rather than fall back to HTTP signaling.
+    if (layoutState.load() == Layout::Mismatch) return true;
     auto* target = transport.load();
     if (!target) return false;
     bool        hold    = false;
