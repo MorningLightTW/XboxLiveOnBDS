@@ -317,10 +317,8 @@ LL_TYPE_INSTANCE_HOOK(
                 "Friends joining through Xbox Live use only Microsoft's relay servers, like a world the game hosts"
             );
         } else if (xboxJoin && !relaysOnly) {
-            logger->warn(
-                "No relay servers for a friend's join (connection {}); it uses the server's own ICE servers",
-                connectionId
-            );
+            logger->warn("No relay servers for a friend's join; it uses the server's own ICE servers");
+            logger->debug("No relay servers for connection {}", connectionId);
         }
     }
     origin(config, offer, std::move(onComplete));

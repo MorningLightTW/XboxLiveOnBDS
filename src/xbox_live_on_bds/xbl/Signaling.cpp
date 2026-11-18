@@ -569,11 +569,11 @@ struct Signaling::Impl {
         if (!res.ok() || res.body.empty()) {
             int code = res.error.empty() ? ErrorConnectRequest : ErrorServerNotFound;
             logger.error(
-                "BDS refused a friend's join ({}) after {} ms: {}",
-                connectionId,
+                "BDS refused a friend's join after {} ms: {}",
                 std::chrono::duration_cast<std::chrono::milliseconds>(Clock::now() - started).count(),
                 res.describe()
             );
+            logger.debug("BDS refused the join of connection {}", connectionId);
             sendSignal(offer.sender, fmt::format("{} {} {}", ConnectError, connectionId, code));
             return;
         }
