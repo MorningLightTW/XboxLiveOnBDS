@@ -81,6 +81,7 @@ To limit who can join, use the server's allow list (`allow-list`).
 
 **Players cannot see the server**
 Check that the console shows `Xbox Live session is up` and that the player and the host account are friends. A player may need to restart the game after adding the friend.
+If the console shows `This build of XboxLiveOnBDS does not match the NetherNet internals of this server` instead, this version of the mod does not fit your LeviLamina version. Install the release made for it.
 
 **The server left the Friends tab while the host account was playing elsewhere**
 The host account can show only one world in the Friends tab. While it is in another world on another device, the server stays hidden and the console warns about it. Within about a minute after that device leaves the world, the server comes back on its own. Better not to play on the host account at all.

@@ -81,6 +81,7 @@ Xbox Live session is up: ...
 
 **玩家看不到伺服器**
 確認主控台有 `Xbox Live session is up`，而且玩家已和主機帳號互加好友。剛加好友後可能要重開遊戲。
+如果主控台出現的是 `This build of XboxLiveOnBDS does not match the NetherNet internals of this server`，代表這個版本的模組不符合你的 LeviLamina 版本，請安裝對應版本的發行檔。
 
 **主機帳號在別處玩時，伺服器從好友分頁消失**
 主機帳號在好友分頁只能顯示一個世界。它在別台裝置進了其他世界時，伺服器會被藏起來，主控台也會出現警告。那台裝置離開世界後，大約一分鐘內伺服器會自己回來。最好不要拿主機帳號去玩。

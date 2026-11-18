@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Built for LeviLamina 26.60.8.
 
+### Added
+
+- If this version of the mod does not fit the server's LeviLamina or BDS version, the console says so and the server stays out of the Friends tab, instead of showing a world that friends cannot join.
+
 ## [0.1.2] - 2026-11-17
 
 ### Changed
