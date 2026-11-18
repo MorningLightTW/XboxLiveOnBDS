@@ -10,6 +10,7 @@
 #include <mutex>
 #include <new>
 #include <random>
+#include <type_traits>
 #include <utility>
 #include <variant>
 
@@ -46,11 +47,15 @@ std::function<void(std::uint64_t to, std::string signal)>      sink;
 int                     sinkCalls = 0;
 std::condition_variable sinkIdle;
 
+// Reading uses the base class the headers declare. Building still needs placement new of that base, because the
+// NetworkID constructors have no address.
 using NetworkIdBase = std::variant<std::monostate, NetherNet::P2P::NetworkID, NetherNet::Realms::NetworkID>;
-static_assert(sizeof(NetworkIdBase) == sizeof(NetherNet::NetworkID));
+static_assert(
+    std::is_base_of_v<NetworkIdBase, NetherNet::NetworkID> && sizeof(NetworkIdBase) == sizeof(NetherNet::NetworkID)
+);
 
 std::optional<std::uint64_t> p2pValue(NetherNet::NetworkID const& id) {
-    if (auto const* p2p = std::get_if<NetherNet::P2P::NetworkID>(&static_cast<NetworkIdBase const&>(id))) {
+    if (auto const* p2p = std::get_if<NetherNet::P2P::NetworkID>(&id)) {
         return p2p->mValue;
     }
     return std::nullopt;
