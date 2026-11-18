@@ -37,7 +37,7 @@ xmake build <stun-test|udp-ports-test|signal-text-test|device-auth-test> && xmak
 ## BDS / LeviLamina facts the code relies on
 
 - The hooks see the transport of BDS only after it handles a signal. Thus, `bds::transport_bridge::prime` POSTs `v=0` to `/v1/join/<id>` before the mod publishes the session. BDS rejects this with CONNECTERROR and makes no peer connection. Without this step, the first join after a restart falls back to HTTP signaling. Behind NAT, that join does not complete. The bridge also uses this probe to check its guessed layouts of the signal types and `NetworkID` against `NetworkID::toString()`. On a mismatch, the mod does not publish the session.
-- BDS sends its answer only after its ICE checks reach the joiner. Behind NAT, this cannot occur. Thus, the stand-in (`ice/StandIn`) answers the checks of BDS with the `ice-pwd` of the joiner. The answers of BDS contain no candidates of BDS.
+- BDS sends its answer only after its ICE checks reach the joiner. Behind NAT, this cannot occur. Thus, the stand-in (`ice/StandIn`) answers the checks of BDS with the `ice-pwd` of the joiner. The answer of BDS contains its host and srflx candidates, IPv4 and IPv6.
 - `NetherNet::ErrorOr` in the headers is smaller than the real type. Do not construct or copy it. Return the result of origin.
 - If you wrap the `onComplete` of `createAnswer` in a new `brstd::move_only_function`, BDS crashes (CFG).
 - If another program uses the `server-udp-ports`, BDS shows no error. It gives no candidates, and joins do not complete. Two servers on one machine need different `server-port`, `server-portv6` and `server-udp-ports`.
