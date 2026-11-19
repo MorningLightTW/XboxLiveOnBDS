@@ -572,7 +572,10 @@ struct Signaling::Impl {
                 {"Accept", "application/json"}
         }
         );
-        if (!probe.ok()) logger.warn("BDS's NetherNet status check failed: {}", probe.describe());
+        if (!probe.ok()) {
+            logger.warn("BDS's NetherNet status check failed: {}", probe.describeStatus());
+            logger.debug("NetherNet status check: {}", util::Redactor::instance().text(probe.describe()));
+        }
         auto res = net::request(
             "POST",
             fmt::format("{}/v1/join/{}", options.relayBaseUrl, joinId),
@@ -595,8 +598,9 @@ struct Signaling::Impl {
             logger.error(
                 "BDS refused a friend's join after {} ms: {}",
                 std::chrono::duration_cast<std::chrono::milliseconds>(Clock::now() - started).count(),
-                res.describe()
+                res.describeStatus()
             );
+            logger.debug("BDS join refusal: {}", util::Redactor::instance().text(res.describe()));
             logger.debug("BDS refused the join of connection {}", util::Redactor::instance().id(connectionId));
             sendSignal(offer.sender, fmt::format("{} {} {}", ConnectError, connectionId, code));
             return;

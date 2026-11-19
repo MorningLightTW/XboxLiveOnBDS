@@ -450,8 +450,9 @@ bool prime(std::uint16_t port) {
     } else if (logger) {
         logger->warn(
             "Could not check the server's NetherNet transport ({}); the first friend to join may not get in",
-            res.describe()
+            res.describeStatus()
         );
+        logger->debug("NetherNet transport check: {}", util::Redactor::instance().text(res.describe()));
     }
     return layoutState.load() != Layout::Mismatch;
 }

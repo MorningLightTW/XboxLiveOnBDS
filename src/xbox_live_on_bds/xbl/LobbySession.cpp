@@ -193,7 +193,8 @@ struct LobbySession::Impl {
         auto res =
             net::request("PUT", sessionUrl(sessionId), headers(MpsdContract), sessionBody(snapshot, connection).dump());
         if (!res.ok()) {
-            logger.error("Could not publish the Xbox Live session: {}", res.describe());
+            logger.error("Could not publish the Xbox Live session: {}", res.describeStatus());
+            logger.debug("Session publish: {}", util::Redactor::instance().text(res.describe()));
             return false;
         }
         return true;
@@ -207,7 +208,8 @@ struct LobbySession::Impl {
         };
         auto res = net::request("POST", HandlesUrl, headers(MpsdContract), body.dump());
         if (!res.ok()) {
-            logger.error("Could not create the Xbox Live activity handle: {}", res.describe());
+            logger.error("Could not create the Xbox Live activity handle: {}", res.describeStatus());
+            logger.debug("Activity handle: {}", util::Redactor::instance().text(res.describe()));
             return false;
         }
         return true;
@@ -220,7 +222,10 @@ struct LobbySession::Impl {
             headers("3"),
             R"({"state":"active"})"
         );
-        if (!res.ok()) logger.warn("Could not update the host account's presence: {}", res.describe());
+        if (!res.ok()) {
+            logger.warn("Could not update the host account's presence: {}", res.describeStatus());
+            logger.debug("Presence update: {}", util::Redactor::instance().text(res.describe()));
+        }
     }
 
     /// Joining players add themselves to the session; each needs a nonce from the host.
@@ -230,7 +235,8 @@ struct LobbySession::Impl {
         auto res = net::request("GET", sessionUrl(sessionId), headers(MpsdContract));
         auto j   = json::parse(res.body, nullptr, false);
         if (!res.ok() || !j.is_object()) {
-            logger.warn("Could not read the Xbox Live session members: {}", res.describe());
+            logger.warn("Could not read the Xbox Live session members: {}", res.describeStatus());
+            logger.debug("Session members: {}", util::Redactor::instance().text(res.describe()));
             return Nonces::Failed;
         }
         std::set<std::string> joiners;
@@ -240,7 +246,8 @@ struct LobbySession::Impl {
                 if (!xuid.empty() && xuid != token.xuid) joiners.insert(xuid);
             }
         } catch (json::exception const&) {
-            logger.warn("Could not read the Xbox Live session members: {}", res.describe());
+            logger.warn("Could not read the Xbox Live session members: {}", res.describeStatus());
+            logger.debug("Session members: {}", util::Redactor::instance().text(res.describe()));
             return Nonces::Failed;
         }
         bool changed = std::erase_if(nonces, [&](auto const& entry) { return !joiners.contains(entry.first); }) > 0;

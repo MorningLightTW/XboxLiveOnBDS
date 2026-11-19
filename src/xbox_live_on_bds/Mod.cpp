@@ -21,6 +21,7 @@
 #include "xbox_live_on_bds/bds/SignalingTrace.h"
 #include "xbox_live_on_bds/bds/TransportBridge.h"
 #include "xbox_live_on_bds/net/UdpPorts.h"
+#include "xbox_live_on_bds/util/Errors.h"
 #include "xbox_live_on_bds/util/Redact.h"
 #include "xbox_live_on_bds/xbl/LobbySession.h"
 
@@ -44,7 +45,7 @@ void Mod::loadConfig() {
         if (!ll::config::loadConfig(config, path)) ll::config::saveConfig(config, path);
     } catch (std::exception const& e) {
         // Leave a broken file as it is for its owner to fix, rather than overwrite it.
-        logger.warn("Could not read {} ({}); using the defaults", path.string(), e.what());
+        logger.warn("Could not read config/config.json ({}); using the defaults", util::describeException(e));
         config = {};
     }
     mVisibility = config.visibility == "friends" ? xbl::Visibility::Friends : xbl::Visibility::FriendsOfFriends;
@@ -61,8 +62,15 @@ bool Mod::load() {
     loadConfig();
     // Without them everything is in English, so a missing lang folder only warns.
     if (auto loaded = ll::i18n::getInstance().load(getSelf().getLangDir()); !loaded) {
-        getSelf().getLogger().warn("Could not load {}; using English", getSelf().getLangDir().string());
-        loaded.error().log(getSelf().getLogger());
+        getSelf().getLogger().warn("Could not load the lang folder of this mod; using English");
+        // The error names files by their full path, which holds the user's folder names.
+        auto message = loaded.error().message();
+        for (auto const& dir : {getSelf().getLangDir().string(), getSelf().getLangDir().generic_string()}) {
+            for (auto at = message.find(dir); at != std::string::npos; at = message.find(dir, at)) {
+                message.replace(at, dir.size(), "lang");
+            }
+        }
+        getSelf().getLogger().debug("Lang folder: {}", message);
     }
     // Holds the Microsoft account refresh token and the device key: keep the data directory private.
     mAuth = std::make_unique<auth::XboxAuth>(getSelf().getLogger(), getSelf().getDataDir() / "auth.json");

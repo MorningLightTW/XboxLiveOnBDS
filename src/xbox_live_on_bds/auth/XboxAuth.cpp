@@ -14,6 +14,7 @@
 #include "xbox_live_on_bds/auth/Signing.h"
 #include "xbox_live_on_bds/net/Http.h"
 #include "xbox_live_on_bds/util/Encoding.h"
+#include "xbox_live_on_bds/util/Errors.h"
 #include "xbox_live_on_bds/util/Redact.h"
 
 namespace xbox_live_on_bds::auth {
@@ -123,7 +124,7 @@ struct XboxAuth::Impl {
         if (!in) return;
         auto j = json::parse(in, nullptr, false);
         if (j.is_discarded() || j.value("version", 0) != CacheVersion) {
-            logger.warn("Ignoring unreadable Xbox Live token cache {}", cacheFile.string());
+            logger.warn("Ignoring unreadable Xbox Live token cache data/auth.json");
             return;
         }
         try {
@@ -147,7 +148,7 @@ struct XboxAuth::Impl {
             auto const mc = j.value("minecraft", json::object());
             minecraft = {mc.value("authorization", ""), mc.value("pmid", ""), mc.value("notAfter", std::int64_t{0})};
         } catch (json::exception const& e) {
-            logger.warn("Ignoring broken Xbox Live token cache: {}", e.what());
+            logger.warn("Ignoring broken Xbox Live token cache: {}", util::describeException(e));
             *this = Impl::Empty{};
         }
     }
@@ -197,7 +198,7 @@ struct XboxAuth::Impl {
             std::ofstream out(tmp, std::ios::binary | std::ios::trunc);
             out << j.dump(2);
             if (!out) {
-                logger.error("Could not write the Xbox Live token cache {}", tmp.string());
+                logger.error("Could not write the Xbox Live token cache data/auth.json");
                 return;
             }
         }
@@ -241,7 +242,8 @@ struct XboxAuth::Impl {
             logger.warn("Could not reach Microsoft to refresh the sign-in ({}); will try again", describeFailure(res));
             return Refresh::Unreachable;
         }
-        logger.warn("Could not refresh the Microsoft account sign-in ({}), signing in again", res.describe());
+        logger.warn("Could not refresh the Microsoft account sign-in ({}), signing in again", res.describeStatus());
+        logger.debug("Microsoft sign-in refresh: {}", util::Redactor::instance().text(res.describe()));
         msaRefresh.clear();
         return Refresh::Rejected;
     }
@@ -311,7 +313,8 @@ struct XboxAuth::Impl {
                 interval += std::chrono::seconds(5);
                 continue;
             }
-            logger.error("Microsoft account sign-in failed: {}", poll.describe());
+            logger.error("Microsoft account sign-in failed: {}", poll.describeStatus());
+            logger.debug("Microsoft sign-in poll: {}", util::Redactor::instance().text(poll.describe()));
             return false;
         }
         logger.error("The sign-in code expired before it was used; restart the mod to get a new one");
@@ -415,7 +418,7 @@ struct XboxAuth::Impl {
             title.notAfter                  = util::parseIsoTime(t.at("NotAfter").get<std::string>());
             xsts[std::string(relyingParty)] = parseXsts(j->at("AuthorizationToken"));
         } catch (json::exception const& e) {
-            logger.error("Unexpected SISU response ({}): {}", e.what(), res.describeStatus());
+            logger.error("Unexpected SISU response ({}): {}", util::describeException(e), res.describeStatus());
             return -1;
         }
         save();
@@ -452,7 +455,7 @@ struct XboxAuth::Impl {
         try {
             xsts[std::string(relyingParty)] = parseXsts(*j);
         } catch (json::exception const& e) {
-            logger.error("Unexpected XSTS response ({}): {}", e.what(), res.describeStatus());
+            logger.error("Unexpected XSTS response ({}): {}", util::describeException(e), res.describeStatus());
             return -1;
         }
         save();
@@ -590,7 +593,7 @@ std::optional<XstsToken> XboxAuth::getXsts(std::string_view relyingParty, std::s
         return mImpl->getXsts(relyingParty, stop);
     } catch (std::exception const& e) {
         // Runs on a worker thread: an escaping exception would end the whole server.
-        mImpl->logger.error("Unexpected Xbox Live sign-in response: {}", e.what());
+        mImpl->logger.error("Unexpected Xbox Live sign-in response: {}", util::describeException(e));
         return std::nullopt;
     }
 }
@@ -600,7 +603,7 @@ std::optional<MinecraftSession> XboxAuth::getMinecraftSession(std::string_view g
     try {
         return mImpl->getMinecraftSession(gameVersion, stop);
     } catch (std::exception const& e) {
-        mImpl->logger.error("Unexpected Xbox Live sign-in response: {}", e.what());
+        mImpl->logger.error("Unexpected Xbox Live sign-in response: {}", util::describeException(e));
         return std::nullopt;
     }
 }
