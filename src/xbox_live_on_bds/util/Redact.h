@@ -8,6 +8,7 @@
 #include <mutex>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace xbox_live_on_bds::util {
 
@@ -38,6 +39,10 @@ public:
     std::string sdp(std::string_view value);
     /// A NetherNet signal, "<TYPE> <connection id> <payload>".
     std::string signal(std::string_view value);
+    /// Registers an exact private string (a gamertag, which may hold spaces, or an XUID). text(), sdp() and signal()
+    /// then replace every occurrence by the alias that player(value) gives. Ignores values shorter than 3 bytes and
+    /// anything past 64 values.
+    void addPlayer(std::string_view value);
     /// Free text, a remote payload or an HTTP body.
     std::string text(std::string_view value);
 
@@ -55,6 +60,8 @@ private:
     std::atomic<bool>                                 mEnabled;
     std::size_t                                       mMaxPerKind;
     std::mutex                                        mMutex;
+    std::mutex                                        mKnownMutex;
+    std::vector<std::string>                          mKnown;   // Registered players; guarded by mKnownMutex.
     std::array<std::map<std::string, std::string>, 4> mAliases; // guarded by mMutex
     std::array<std::size_t, 4> mCounters{};                     // Never reset: aliases stay unique. Guarded by mMutex.
 };

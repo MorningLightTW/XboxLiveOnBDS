@@ -324,9 +324,8 @@ struct LobbySession::Impl {
         if (handle == Handle::Elsewhere) return;
         handle = Handle::Elsewhere;
         logger.warn(
-            "The host account {} is in another world on another device; friends will not see this server until it "
-            "leaves that world",
-            token.gamertag
+            "The host account is in another world on another device; friends will not see this server until it "
+            "leaves that world"
         );
     }
 
@@ -435,7 +434,9 @@ struct LobbySession::Impl {
             return false;
         }
         token = *xsts;
-        rta   = RtaClient::connect(
+        util::Redactor::instance().addPlayer(token.gamertag);
+        util::Redactor::instance().addPlayer(token.xuid);
+        rta = RtaClient::connect(
             token.authorizationHeader(),
             {.onConnectionId =
                  [this](std::string const& id) {
@@ -663,7 +664,11 @@ struct LobbySession::Impl {
                 doInfo = true;
                 if (membersRetry) doMembers = true;
             }
-            if (auto xsts = auth.getXsts(auth::XboxLiveRelyingParty, stop)) token = *xsts;
+            if (auto xsts = auth.getXsts(auth::XboxLiveRelyingParty, stop)) {
+                token = *xsts;
+                util::Redactor::instance().addPlayer(token.gamertag);
+                util::Redactor::instance().addPlayer(token.xuid);
+            }
             auto nonces  = doMembers ? updateNonces() : Nonces::Unchanged;
             membersRetry = nonces == Nonces::Failed;
             bool ok      = nonces != Nonces::Failed;

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <exception>
+#include <filesystem>
 #include <string>
 
 #include <fmt/format.h>
@@ -15,6 +16,7 @@ inline std::string describeException(std::exception const& e) noexcept {
         if (auto const* parse = dynamic_cast<nlohmann::json::parse_error const*>(&e)) {
             return fmt::format("invalid JSON at byte {}", parse->byte);
         }
+        if (auto const* fs = dynamic_cast<std::filesystem::filesystem_error const*>(&e)) return fs->code().message();
         return e.what();
     } catch (...) {
         return "error";

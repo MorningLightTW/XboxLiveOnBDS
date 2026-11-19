@@ -264,8 +264,11 @@ struct Signaling::Impl {
             }
             for (auto const& [player, signal] : batch) {
                 if (signal.starts_with(ConnectResponse)) logger.debug("The server answered a friend's join");
-                else if (signal.starts_with(ConnectError))
-                    logger.warn("The server refused a friend's join: {}", signal);
+                else if (signal.starts_with(ConnectError)) {
+                    auto const code = signal.substr(signal.find_last_of(' ') + 1);
+                    logger.warn("The server refused a friend's join (error {})", code);
+                    logger.debug("Refused join: {}", util::Redactor::instance().signal(signal));
+                }
                 sendSignal(player, signal);
             }
         }
@@ -451,7 +454,8 @@ struct Signaling::Impl {
         auto j = json::parse(text, nullptr, false);
         if (!j.is_object()) return;
         if (j.contains("error") && !j["error"].is_null()) {
-            logger.warn("Signaling service error: {}", j["error"].dump());
+            logger.warn("The signaling service reported an error");
+            logger.debug("Signaling service error: {}", util::Redactor::instance().text(j["error"].dump()));
             return;
         }
         if (!j.contains("method")) { // A response to one of our requests.

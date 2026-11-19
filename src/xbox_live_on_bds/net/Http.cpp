@@ -116,7 +116,7 @@ HttpResponse request(std::string_view method, std::string_view url, Headers cons
             0
         )
         || !WinHttpReceiveResponse(req.h, nullptr)) {
-        res.error = failure(fmt::format("{} {}", method, url));
+        res.error = failure(fmt::format("{} {}", method, std::string(host.begin(), host.end())));
         return res;
     }
 

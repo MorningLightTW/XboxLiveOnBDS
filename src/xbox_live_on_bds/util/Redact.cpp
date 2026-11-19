@@ -190,6 +190,16 @@ std::string Redactor::ip(std::string_view value) {
     }
 }
 
+void Redactor::addPlayer(std::string_view value) {
+    try {
+        if (value.size() < 3) return;
+        std::lock_guard lock(mKnownMutex);
+        if (mKnown.size() >= 64) return;
+        if (std::ranges::find(mKnown, value) != mKnown.end()) return;
+        mKnown.emplace_back(value);
+    } catch (...) {}
+}
+
 std::string Redactor::text(std::string_view value) {
     if (!mEnabled) return std::string(value);
     try {
@@ -218,12 +228,27 @@ std::string Redactor::signal(std::string_view value) {
 }
 
 std::string Redactor::textImpl(std::string_view value) {
+    std::vector<std::string> known;
+    {
+        std::lock_guard lock(mKnownMutex);
+        known = mKnown;
+    }
     std::string out;
     out.reserve(value.size());
     std::size_t i = 0;
     std::size_t n = value.size();
     while (i < n) {
         char c = value[i];
+        {
+            std::string_view bestKnown;
+            for (auto const& k : known)
+                if (k.size() > bestKnown.size() && value.substr(i).starts_with(k)) bestKnown = k;
+            if (!bestKnown.empty()) {
+                out += alias(Kind::Player, bestKnown);
+                i   += bestKnown.size();
+                continue;
+            }
+        }
         if (value.substr(i).starts_with("XBL3.0 x=")) {
             std::size_t j = i + 9; // Past "XBL3.0 x=".
             while (j < n && !isSpace(value[j]) && value[j] != '"' && value[j] != '\'') ++j;
@@ -255,8 +280,15 @@ std::string Redactor::textImpl(std::string_view value) {
             std::size_t digits = 0;
             while (i + digits < n && isDigit(value[i + digits])) ++digits;
             bool tail = i + digits < n && isAlnum(value[i + digits]);
-            if (digits == 16 && value.substr(i, 4) == "2533" && !tail) {
+            // An XUID is 16 digits and starts with 253; a NetherNet or connection id is 17 to 20 digits. Shorter
+            // numbers (timestamps, ports, counts) stay.
+            if (digits == 16 && value.substr(i, 3) == "253" && !tail) {
                 out += alias(Kind::Player, value.substr(i, digits));
+                i   += digits;
+                continue;
+            }
+            if (digits >= 17 && digits <= 20 && !tail) {
+                out += alias(Kind::Peer, value.substr(i, digits));
                 i   += digits;
                 continue;
             }
