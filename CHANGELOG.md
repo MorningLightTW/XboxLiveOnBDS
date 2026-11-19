@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - If this version of the mod does not fit the server's LeviLamina or BDS version, the console says so and the server stays out of the Friends tab, instead of showing a world that friends cannot join.
+- The debug log and the files in `data/debug/` replace addresses, ids, player names and tokens with stand-in names, so they can be attached to a public issue. An empty `data/debug-raw.flag` keeps the real values, for use on your own server only.
 
 ## [0.1.2] - 2026-11-17
 

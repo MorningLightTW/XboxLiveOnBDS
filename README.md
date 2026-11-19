@@ -95,6 +95,9 @@ When two servers run on one computer, each needs its own `server-port`, `server-
 **Changing the host account**
 Stop the server, delete `mods/xbox-live-on-bds/data/auth.json`, then start it and sign in again.
 
+**Reporting a problem**
+Create an empty file `mods/xbox-live-on-bds/data/debug.flag`, restart the server and make the problem happen again. The console then shows a debug log, and `mods/xbox-live-on-bds/data/debug/` gets the details of friends' joins. In both, addresses, ids, player names and tokens are replaced by names such as `ip1` and `player1`, so you can attach them to an issue. Before you attach the console log, remove what this does not cover: the gamertag of the host account in the `Xbox Live session is up` line, and the names, XUIDs and `pfid`s in the server's own lines, such as `Player connected` and `Player Spawned`. Never attach `data/auth.json`. Delete `debug.flag` when you are done.
+
 ## Build it yourself
 
 You need Windows with these tools installed:

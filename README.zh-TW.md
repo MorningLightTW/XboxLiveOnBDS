@@ -95,6 +95,9 @@ Xbox Live session is up: ...
 **想換主機帳號**
 關閉伺服器，刪除 `mods/xbox-live-on-bds/data/auth.json`，再啟動並重新登入。
 
+**回報問題**
+建立一個空檔案 `mods/xbox-live-on-bds/data/debug.flag`，重啟伺服器，再讓問題發生一次。主控台會顯示 debug 記錄，`mods/xbox-live-on-bds/data/debug/` 會存下好友加入的細節。兩者裡的位址、id、玩家名稱和 token 都會換成 `ip1`、`player1` 這類代號，可以直接附在 issue 上。附上主控台記錄前，請自己刪掉兩樣不會被替換的東西：`Xbox Live session is up` 這行裡主機帳號的 gamertag，以及伺服器自己的記錄行（例如 `Player connected`、`Player Spawned`）裡的玩家名稱、XUID 和 `pfid`。絕對不要附上 `data/auth.json`。完成後刪掉 `debug.flag`。
+
 ## 自行建置
 
 需要 Windows，並安裝以下工具：
