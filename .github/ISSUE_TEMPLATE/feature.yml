@@ -1,0 +1,24 @@
+name: Feature request
+description: Something the mod should do that it does not do yet.
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        These are out of scope and will be closed:
+        - adding or accepting friends on the host account automatically;
+        - more than one host account for one server;
+        - moving players to a different server (like MCXboxBroadcast); this mod lets friends join BDS itself.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What you want to do
+      description: The situation and what is missing. Not how to build it.
+    validations:
+      required: true
+
+  - type: textarea
+    id: idea
+    attributes:
+      label: How it could work

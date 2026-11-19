@@ -1,0 +1,107 @@
+name: Bug report
+description: The server does not show up, friends cannot join, or something else does not work.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Everything in an issue is public. **Never attach `data/auth.json`**: it holds the host account's sign-in.
+        A security problem goes to a [private report](https://github.com/MorningLightTW/XboxLiveOnBDS/security/advisories/new), not here.
+
+        First check [Common problems](https://github.com/MorningLightTW/XboxLiveOnBDS#common-problems) in the README.
+
+  - type: input
+    id: mod-version
+    attributes:
+      label: Mod version
+      description: The `Loading XboxLiveOnBDS v...` line in the console.
+      placeholder: 0.1.2
+    validations:
+      required: true
+
+  - type: input
+    id: server-version
+    attributes:
+      label: BDS and LeviLamina versions
+      placeholder: BDS 26.60.6, LeviLamina 26.60.8
+    validations:
+      required: true
+
+  - type: dropdown
+    id: install
+    attributes:
+      label: How the mod was installed
+      options:
+        - lip
+        - Release zip
+        - Built myself
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: player-device
+    attributes:
+      label: Device of the player who had the problem
+      multiple: true
+      options:
+        - Windows
+        - Android
+        - iOS / iPadOS
+        - Xbox
+        - PlayStation
+        - Nintendo Switch
+        - Not about a player
+
+  - type: dropdown
+    id: player-network
+    attributes:
+      label: Network of that player
+      options:
+        - Same network as the server
+        - A different home or office network
+        - Mobile data
+        - Not about a player
+
+  - type: textarea
+    id: ping
+    attributes:
+      label: Output of /xbl ping
+      description: If the player got in, run `/xbl ping <player>` from the console. It shows no IP addresses.
+      render: text
+
+  - type: textarea
+    id: log
+    attributes:
+      label: Console log with debug.flag
+      description: |
+        Create an empty file `mods/xbox-live-on-bds/data/debug.flag`, restart the server, make the problem happen again, and paste the console log from the start.
+        Addresses, ids, player names and tokens are already replaced by `ip1`, `player1` and so on. Remove these yourself: the host gamertag in the `Xbox Live session is up` line, and the names, XUIDs and `pfid`s in the server's own lines (`Player connected`, `Player Spawned` and similar).
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: debug-files
+    attributes:
+      label: Files from data/debug
+      description: Drag the `join-*.txt` files from `mods/xbox-live-on-bds/data/debug/` here, if there are any. Their values are already replaced.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before you submit
+      options:
+        - label: I use the latest release of the mod.
+          required: true
+        - label: I removed the host gamertag and the names, XUIDs and `pfid`s in the server's own log lines.
+          required: true
+        - label: I did not attach `data/auth.json`, and I did not use `debug-raw.flag` for what I attached.
+          required: true
