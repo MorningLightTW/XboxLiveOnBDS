@@ -96,7 +96,7 @@ Xbox Live session is up: ...
 关闭服务器，删除 `mods/xbox-live-on-bds/data/auth.json`，再启动并重新登录。
 
 **报告问题**
-创建一个空文件 `mods/xbox-live-on-bds/data/debug.flag`，重启服务器，再让问题发生一次。控制台会显示 debug 日志，`mods/xbox-live-on-bds/data/debug/` 会保存好友加入的细节。两者中的地址、id、玩家名称和 token 都会替换成 `ip1`、`player1` 这类代号，可以直接附在 issue 上。附上控制台日志前，请自己删除两样不会被替换的内容：`Xbox Live session is up` 这一行里主机账号的 gamertag，以及服务器自己的日志行（例如 `Player connected`、`Player Spawned`）里的玩家名称、XUID 和 `pfid`。绝对不要附上 `data/auth.json`。完成后删除 `debug.flag`。
+创建一个空文件 `mods/xbox-live-on-bds/data/debug.flag`，重启服务器，再让问题发生一次。控制台会显示 debug 日志，`mods/xbox-live-on-bds/data/debug/` 会保存好友加入的细节。两者中的地址、id、玩家名称和 token 都会替换成 `ip1`、`player1` 这类代号，可以直接附在 issue 上。附上控制台日志前，请自己删除两样不会被替换的内容：`Xbox Live session is up` 这一行里主机账号的 gamertag，以及服务器自己的日志行（例如 `Player connected`、`Player Spawned`）里的玩家名称、XUID 和 `pfid`。绝对不要附上 `data/auth.json`。完成后删除 `debug.flag`。然后创建一个[问题报告](https://github.com/MorningLightTW/XboxLiveOnBDS/issues/new?template=bug.yml)。
 
 ## 自行构建
 
