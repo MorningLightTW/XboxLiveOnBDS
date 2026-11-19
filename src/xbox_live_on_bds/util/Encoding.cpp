@@ -22,6 +22,59 @@ std::wstring widen(std::string_view utf8) {
     return wide;
 }
 
+std::string toValidUtf8(std::string_view text) {
+    std::string out;
+    size_t      i      = 0;
+    auto        byteAt = [&](size_t at) { return static_cast<unsigned char>(text[at]); };
+    while (i < text.size()) {
+        unsigned char lead = byteAt(i);
+        if (lead < 0x80) {
+            out += static_cast<char>(lead);
+            ++i;
+            continue;
+        }
+        // Sequence length and the allowed range of the second byte (this rejects overlong forms, surrogates and
+        // code points above U+10FFFF).
+        size_t        length = 0;
+        unsigned char low = 0x80, high = 0xBF;
+        if (lead >= 0xC2 && lead <= 0xDF) {
+            length = 2;
+        } else if (lead >= 0xE0 && lead <= 0xEF) {
+            length = 3;
+            if (lead == 0xE0) low = 0xA0;
+            if (lead == 0xED) high = 0x9F;
+        } else if (lead >= 0xF0 && lead <= 0xF4) {
+            length = 4;
+            if (lead == 0xF0) low = 0x90;
+            if (lead == 0xF4) high = 0x8F;
+        }
+        size_t used = 1;
+        bool   ok   = length != 0;
+        for (size_t k = 1; ok && k < length; ++k) {
+            if (i + k >= text.size()) {
+                ok = false;
+                break;
+            }
+            unsigned char b = byteAt(i + k);
+            if (b < low || b > high) {
+                ok = false;
+                break;
+            }
+            low  = 0x80;
+            high = 0xBF;
+            ++used;
+        }
+        if (ok) {
+            out.append(text.substr(i, length));
+            i += length;
+        } else {
+            out += "\xEF\xBF\xBD";
+            i   += used; // resume at the first byte that did not continue the sequence
+        }
+    }
+    return out;
+}
+
 namespace {
 constexpr std::string_view Base64Alphabet    = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 constexpr std::string_view Base64UrlAlphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";

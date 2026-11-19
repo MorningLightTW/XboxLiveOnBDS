@@ -136,3 +136,18 @@ target("redact-test")
     end
     add_includedirs("src")
     add_files("src/xbox_live_on_bds/util/Redact.cpp", "tests/redact_test.cpp")
+
+-- Invalid UTF-8 repair, offline: xmake build encoding-test && xmake run encoding-test
+target("encoding-test")
+    set_default(false)
+    set_kind("binary")
+    set_languages("c++23")
+    if is_plat("windows") then
+        set_toolchains("clang-cl")
+        add_cxflags("/utf-8")
+        add_defines("NOMINMAX", "UNICODE")
+    end
+    add_packages("nlohmann_json", "fmt")
+    add_syslinks("bcrypt")
+    add_includedirs("src")
+    add_files("src/xbox_live_on_bds/util/Encoding.cpp", "tests/encoding_test.cpp")

@@ -11,6 +11,9 @@ namespace xbox_live_on_bds::util {
 
 std::wstring widen(std::string_view utf8);
 
+/// The text as valid UTF-8: unchanged when it already is, else each ill-formed byte sequence becomes U+FFFD.
+std::string toValidUtf8(std::string_view text);
+
 /// Standard base64 with padding, or base64url without padding (JWK coordinates).
 std::string                base64Encode(std::string_view bytes, bool url = false);
 std::optional<std::string> base64Decode(std::string_view text);

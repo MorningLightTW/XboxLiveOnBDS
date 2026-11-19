@@ -23,6 +23,7 @@
 #include "xbox_live_on_bds/auth/XboxAuth.h"
 #include "xbox_live_on_bds/net/Http.h"
 #include "xbox_live_on_bds/util/Encoding.h"
+#include "xbox_live_on_bds/util/Errors.h"
 #include "xbox_live_on_bds/util/Redact.h"
 #include "xbox_live_on_bds/xbl/RtaClient.h"
 #include "xbox_live_on_bds/xbl/Signaling.h"
@@ -123,7 +124,7 @@ struct LobbySession::Impl {
     : logger(logger),
       auth(auth),
       info(std::move(initial)),
-      worker([this](std::stop_token stop) { run(stop); }) {}
+      worker([this](std::stop_token stop) { runGuarded(stop); }) {}
 
     // ---- requests -----------------------------------------------------------------------------------------
 
@@ -576,6 +577,23 @@ struct LobbySession::Impl {
         dropSignaling(); // No more joins.
         leave();
         dropRta();
+    }
+
+    /// An exception must not leave the worker thread: that would end the whole server.
+    void runGuarded(std::stop_token stop) {
+        try {
+            run(stop);
+            return;
+        } catch (std::exception const& e) {
+            logger.error("The Xbox Live session stopped after an unexpected error: {}", util::describeException(e));
+        } catch (...) {
+            logger.error("The Xbox Live session stopped after an unexpected error");
+        }
+        try {
+            dropSignaling();
+            leave();
+            dropRta();
+        } catch (...) {}
     }
 
     /// Keeps the published session current until stopped.

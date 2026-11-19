@@ -72,3 +72,10 @@ runs:
       run: |
         xmake build -y signal-text-test
         xmake run signal-text-test
+
+    - name: Encoding test
+      if: inputs.build == 'true' && inputs.tests == 'true'
+      shell: pwsh
+      run: |
+        xmake build -y encoding-test
+        xmake run encoding-test

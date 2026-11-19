@@ -12,6 +12,8 @@
 #include "mc/server/PropertiesSettings.h"
 #include "mc/world/level/GameType.h"
 
+#include "xbox_live_on_bds/util/Encoding.h"
+
 namespace xbox_live_on_bds::bds {
 
 std::optional<xbl::LobbyInfo> readServerLobbyInfo() {
@@ -19,9 +21,11 @@ std::optional<xbl::LobbyInfo> readServerLobbyInfo() {
     if (!properties) return std::nullopt;
 
     xbl::LobbyInfo info;
-    info.worldName  = properties->mLevelName;
-    info.maxPlayers = properties->mMaxPlayers;
-    info.localPort  = properties->mServerPort;
+    // server.properties may be saved in a legacy code page; the session JSON must be UTF-8.
+    std::string const& levelName = properties->mLevelName;
+    info.worldName               = util::toValidUtf8(levelName);
+    info.maxPlayers              = properties->mMaxPlayers;
+    info.localPort               = properties->mServerPort;
     // "1.26.60", as the game reports itself; to_string() would append the build hash ("+41512d4").
     auto version  = ll::getGameVersion();
     info.version  = fmt::format("{}.{}.{}", version.major, version.minor, version.patch);
