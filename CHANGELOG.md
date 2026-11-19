@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-11-19
+
 ### Fixed
 
 - The server no longer crashes when its world name in `server.properties` is not saved as UTF-8.
@@ -57,7 +59,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - An empty `data/debug.flag` turns on the debug log (why a connection dropped, reconnects, per-player connection quality), a NetherNet signaling trace and join dumps.
 - Each release comes with a `.sha256` file for the mod zip, to check a download against.
 
-[Unreleased]: https://github.com/MorningLightTW/XboxLiveOnBDS/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/MorningLightTW/XboxLiveOnBDS/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/MorningLightTW/XboxLiveOnBDS/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/MorningLightTW/XboxLiveOnBDS/compare/v0.1.2...v0.2.0
 [0.1.2]: https://github.com/MorningLightTW/XboxLiveOnBDS/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/MorningLightTW/XboxLiveOnBDS/compare/v0.1.0...v0.1.1
