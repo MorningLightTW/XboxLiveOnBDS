@@ -79,24 +79,17 @@ To limit who can join, use the server's allow list (`allow-list`).
 
 ## Common problems
 
-**Players cannot see the server**
-Check that the console shows `Xbox Live session is up` and that the player and the host account are friends. A player may need to restart the game after adding the friend.
-If the console shows `This build of XboxLiveOnBDS does not match the NetherNet internals of this server` instead, this version of the mod does not fit your LeviLamina version. Install the release made for it.
+**Players cannot see the server**: the console must show `Xbox Live session is up`, and the player must be friends with the host account. If it shows `does not match the NetherNet internals`, install the release made for your LeviLamina version.
 
-**The server left the Friends tab while the host account was playing elsewhere**
-The host account can show only one world in the Friends tab. While it is in another world on another device, the server stays hidden and the console warns about it. Within about a minute after that device leaves the world, the server comes back on its own. Better not to play on the host account at all.
+**The server left the Friends tab**: the host account shows one world at a time. The server comes back about a minute after the host account leaves a world on another device.
 
-**Players see the server but cannot join**
-Look for warnings starting with `Friends' joins:` at startup; usually the allow list is on. Also check that the player's game version matches the server's.
+**Players see the server but cannot join**: look for `Friends' joins:` warnings at startup (usually the allow list), and check that the game versions match.
 
-**Players hang at "Connecting to multiplayer game"**
-When two servers run on one computer, each needs its own `server-port`, `server-portv6` and `server-udp-ports` in `server.properties`. If the UDP port is already taken, the server cannot reach players and says nothing about it; this mod warns with `Friends' joins: server-udp-ports=... is already in use` at startup.
+**Players hang at "Connecting to multiplayer game"**: two servers on one computer need different `server-port`, `server-portv6` and `server-udp-ports`.
 
-**Changing the host account**
-Stop the server, delete `mods/xbox-live-on-bds/data/auth.json`, then start it and sign in again.
+**Changing the host account**: stop the server, delete `mods/xbox-live-on-bds/data/auth.json`, then start it and sign in again.
 
-**Reporting a problem**
-Create an empty file `mods/xbox-live-on-bds/data/debug.flag`, restart the server and make the problem happen again. The console then shows a debug log, and `mods/xbox-live-on-bds/data/debug/` gets the details of friends' joins. In both, addresses, ids, player names and tokens are replaced by names such as `ip1` and `player1`, so you can attach them to an issue. Before you attach the console log, remove what this does not cover: the gamertag of the host account in the `Xbox Live session is up` line, and the names, XUIDs and `pfid`s in the server's own lines, such as `Player connected` and `Player Spawned`. Never attach `data/auth.json`. Delete `debug.flag` when you are done. Then open a [bug report](https://github.com/MorningLightTW/XboxLiveOnBDS/issues/new?template=bug.yml).
+**Reporting a problem**: create an empty `mods/xbox-live-on-bds/data/debug.flag`, restart, make the problem happen, then open a [bug report](https://github.com/MorningLightTW/XboxLiveOnBDS/issues/new?template=bug.yml). The form says what to attach.
 
 ## Build it yourself
 

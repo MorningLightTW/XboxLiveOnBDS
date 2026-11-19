@@ -79,24 +79,17 @@ Xbox Live session is up: ...
 
 ## 常見問題
 
-**玩家看不到伺服器**
-確認主控台有 `Xbox Live session is up`，而且玩家已和主機帳號互加好友。剛加好友後可能要重開遊戲。
-如果主控台出現的是 `This build of XboxLiveOnBDS does not match the NetherNet internals of this server`，代表這個版本的模組不符合你的 LeviLamina 版本，請安裝對應版本的發行檔。
+**玩家看不到伺服器**：主控台要有 `Xbox Live session is up`，玩家也要和主機帳號是好友。如果出現 `does not match the NetherNet internals`，請安裝對應你 LeviLamina 版本的發行檔。
 
-**主機帳號在別處玩時，伺服器從好友分頁消失**
-主機帳號在好友分頁只能顯示一個世界。它在別台裝置進了其他世界時，伺服器會被藏起來，主控台也會出現警告。那台裝置離開世界後，大約一分鐘內伺服器會自己回來。最好不要拿主機帳號去玩。
+**伺服器從好友分頁消失**：主機帳號一次只能顯示一個世界。主機帳號在別台裝置離開世界後，大約一分鐘內伺服器會回來。
 
-**玩家看得到但進不來**
-看啟動時 `Friends' joins:` 開頭的警告，通常是白名單開著。也請確認玩家的遊戲版本和伺服器相同。
+**玩家看得到但進不來**：看啟動時 `Friends' joins:` 開頭的警告（通常是白名單），並確認遊戲版本相同。
 
-**玩家卡在「連線到多人遊戲」**
-同一台電腦開兩台伺服器時，每台的 `server.properties` 都要有自己的 `server-port`、`server-portv6` 和 `server-udp-ports`。UDP port 被佔用時，伺服器連不到玩家，卻不會說什麼；本模組會在啟動時發出 `Friends' joins: server-udp-ports=... is already in use` 警告。
+**玩家卡在「連線到多人遊戲」**：同一台電腦開兩台伺服器時，`server-port`、`server-portv6` 和 `server-udp-ports` 都要不同。
 
-**想換主機帳號**
-關閉伺服器，刪除 `mods/xbox-live-on-bds/data/auth.json`，再啟動並重新登入。
+**想換主機帳號**：關閉伺服器，刪除 `mods/xbox-live-on-bds/data/auth.json`，再啟動並重新登入。
 
-**回報問題**
-建立一個空檔案 `mods/xbox-live-on-bds/data/debug.flag`，重啟伺服器，再讓問題發生一次。主控台會顯示 debug 記錄，`mods/xbox-live-on-bds/data/debug/` 會存下好友加入的細節。兩者裡的位址、id、玩家名稱和 token 都會換成 `ip1`、`player1` 這類代號，可以直接附在 issue 上。附上主控台記錄前，請自己刪掉兩樣不會被替換的東西：`Xbox Live session is up` 這行裡主機帳號的 gamertag，以及伺服器自己的記錄行（例如 `Player connected`、`Player Spawned`）裡的玩家名稱、XUID 和 `pfid`。絕對不要附上 `data/auth.json`。完成後刪掉 `debug.flag`。接著開一個[問題回報](https://github.com/MorningLightTW/XboxLiveOnBDS/issues/new?template=bug.yml)。
+**回報問題**：建立空檔案 `mods/xbox-live-on-bds/data/debug.flag`，重啟並讓問題再發生一次，然後開一個[問題回報](https://github.com/MorningLightTW/XboxLiveOnBDS/issues/new?template=bug.yml)，表單會說明要附什麼。
 
 ## 自行建置
 
