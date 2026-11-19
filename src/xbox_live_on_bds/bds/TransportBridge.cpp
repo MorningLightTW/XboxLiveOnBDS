@@ -21,6 +21,7 @@
 #include "ll/api/memory/Hook.h"
 #include "xbox_live_on_bds/bds/SignalLayout.h"
 #include "xbox_live_on_bds/net/Http.h"
+#include "xbox_live_on_bds/util/Redact.h"
 
 #include "mc/deps/nether_net/NetworkID.h"
 #include "mc/deps/nether_net/ServerNegotiator.h"
@@ -318,7 +319,7 @@ LL_TYPE_INSTANCE_HOOK(
             );
         } else if (xboxJoin && !relaysOnly) {
             logger->warn("No relay servers for a friend's join; it uses the server's own ICE servers");
-            logger->debug("No relay servers for connection {}", connectionId);
+            logger->debug("No relay servers for connection {}", util::Redactor::instance().id(connectionId));
         }
     }
     origin(config, offer, std::move(onComplete));

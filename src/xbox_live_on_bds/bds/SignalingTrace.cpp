@@ -16,6 +16,7 @@
 #include "ll/api/io/Logger.h"
 
 #include "xbox_live_on_bds/bds/SignalLayout.h"
+#include "xbox_live_on_bds/util/Redact.h"
 
 #include "mc/deps/nether_net/NetworkID.h"
 #include "mc/deps/nether_net/ServerNegotiator.h"
@@ -31,7 +32,8 @@ namespace {
 
 ll::io::Logger* traceLogger = nullptr;
 
-// Full signals of each join, one file per connection id (debugging only: addresses and identity tokens).
+// Full signals of each join, one file per connection (names, ids and addresses are redacted unless the raw debug
+// flag is set).
 std::filesystem::path   dumpDir;
 std::mutex              dumpMutex;
 std::set<std::uint64_t> dumpedJoins; // guarded by dumpMutex
@@ -52,9 +54,10 @@ void dumpSignal(std::string_view direction, std::string_view peer, std::string_v
     }
     std::error_code ec;
     std::filesystem::create_directories(dumpDir, ec);
-    std::ofstream(dumpDir / fmt::format("join-{}.txt", id), std::ios::binary | std::ios::app)
-        << direction << ' ' << peer << '\n'
-        << message << "\n\n";
+    auto& redactor = util::Redactor::instance();
+    std::ofstream(dumpDir / fmt::format("join-{}.txt", redactor.id(idText)), std::ios::binary | std::ios::app)
+        << direction << ' ' << redactor.id(peer) << '\n'
+        << redactor.signal(message) << "\n\n";
 }
 
 using layout::SignalWithCode;
@@ -80,8 +83,8 @@ LL_TYPE_INSTANCE_HOOK(
         traceLogger->info(
             "[NetherNet] <- {} from {}: {} ({} bytes)",
             channelName(sourceChannel),
-            from.toString(),
-            head,
+            util::Redactor::instance().id(from.toString()),
+            util::Redactor::instance().signal(head),
             message.size()
         );
         dumpSignal(fmt::format("<- {} from", channelName(sourceChannel)), from.toString(), message);
@@ -112,7 +115,7 @@ LL_TYPE_INSTANCE_HOOK(
         traceLogger->info(
             "[NetherNet] -> {} to {} (preferred channel: {})",
             kinds[signal.index()],
-            to,
+            util::Redactor::instance().id(to),
             preference ? channelName(*preference) : "none"
         );
         std::string text;
@@ -156,8 +159,8 @@ LL_TYPE_INSTANCE_HOOK(
     if (traceLogger) {
         std::string urls; // No credentials: just where each server is.
         for (auto const& server : config.servers.get()) {
-            if (!server.uri.empty()) urls += fmt::format(" {}", server.uri);
-            for (auto const& url : server.urls) urls += fmt::format(" {}", url);
+            if (!server.uri.empty()) urls += fmt::format(" {}", util::Redactor::instance().text(server.uri));
+            for (auto const& url : server.urls) urls += fmt::format(" {}", util::Redactor::instance().text(url));
         }
         traceLogger->info("[NetherNet] createAnswer started ({} ICE server(s):{})", config.servers->size(), urls);
     }

@@ -21,6 +21,7 @@
 #include "xbox_live_on_bds/bds/SignalingTrace.h"
 #include "xbox_live_on_bds/bds/TransportBridge.h"
 #include "xbox_live_on_bds/net/UdpPorts.h"
+#include "xbox_live_on_bds/util/Redact.h"
 #include "xbox_live_on_bds/xbl/LobbySession.h"
 
 namespace xbox_live_on_bds {
@@ -70,18 +71,29 @@ bool Mod::load() {
     if (auto warning = net::checkServerUdpPorts("server.properties")) {
         getSelf().getLogger().warn("Friends' joins: {}", *warning);
     }
-    // Debugging switch: an empty file named "debug.flag" in the data directory turns this mod's log up to debug
-    // (why a connection dropped, reconnects, held joins, per-player link quality), logs every NetherNet signal and
-    // writes joins relayed over HTTP (offer, answer, ids) to data/debug/. Those dumps hold players' addresses
-    // and identity tokens: delete them when done.
-    if (std::filesystem::exists(getSelf().getDataDir() / "debug.flag")) {
+    // Debugging switches, empty files in the data directory:
+    // - "debug.flag" turns this mod's log up to debug (why a connection dropped, reconnects, held joins, per-player
+    //   link quality), logs every NetherNet signal and writes joins relayed over HTTP (offer, answer, ids) to
+    //   data/debug/. Addresses, ids, names and tokens in the log and in those files are replaced by aliases, so
+    //   they can go into a public issue.
+    // - "debug-raw.flag" does the same without the replacing, and implies debug. The log and the files then hold
+    //   players' addresses and identity tokens: never share them, and delete the files when done.
+    auto dataDir = getSelf().getDataDir();
+    bool raw     = std::filesystem::exists(dataDir / "debug-raw.flag");
+    if (raw || std::filesystem::exists(dataDir / "debug.flag")) {
         mDebug = true;
+        util::Redactor::instance().setEnabled(!raw);
         getSelf().getLogger().setLevel(ll::io::LogLevel::Debug);
-        bds::enableSignalingTrace(getSelf().getLogger(), getSelf().getDataDir() / "debug");
+        bds::enableSignalingTrace(getSelf().getLogger(), dataDir / "debug");
         getSelf().getLogger().warn(
-            "Debug mode: debug log, NetherNet signaling trace, join dumps in {}",
-            (getSelf().getDataDir() / "debug").string()
+            "Debug mode: debug log, NetherNet signaling trace, join dumps in the data/debug folder of this mod"
         );
+        if (raw) {
+            getSelf().getLogger().warn(
+                "RAW debug mode (debug-raw.flag): the log and data/debug hold IP addresses, ids and tokens. Do not "
+                "share them"
+            );
+        }
     }
     return true;
 }

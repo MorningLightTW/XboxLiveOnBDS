@@ -20,6 +20,7 @@
 #include "xbox_live_on_bds/net/Http.h"
 #include "xbox_live_on_bds/net/WebSocket.h"
 #include "xbox_live_on_bds/util/Encoding.h"
+#include "xbox_live_on_bds/util/Redact.h"
 #include "xbox_live_on_bds/xbl/SignalText.h"
 
 namespace xbox_live_on_bds::xbl {
@@ -168,7 +169,10 @@ struct Signaling::Impl {
         {
             std::lock_guard lock(mutex);
             if (standIns.size() >= MaxStandIns && !standIns.contains(connectionId)) {
-                logger.debug("Too many stand-ins open; not adding one for connection {}", connectionId);
+                logger.debug(
+                    "Too many stand-ins open; not adding one for connection {}",
+                    util::Redactor::instance().id(connectionId)
+                );
                 return;
             }
         }
@@ -217,7 +221,10 @@ struct Signaling::Impl {
             for (auto it = standIns.begin(); it != standIns.end();) {
                 auto& entry = it->second;
                 if (!entry.reported && entry.standIn->checksAnswered() > 0) {
-                    logger.debug("Answered the server's connectivity check for a friend (connection {})", it->first);
+                    logger.debug(
+                        "Answered the server's connectivity check for a friend (connection {})",
+                        util::Redactor::instance().id(it->first)
+                    );
                     entry.reported = true;
                 }
                 if (now - entry.opened > 60s) {
@@ -369,12 +376,15 @@ struct Signaling::Impl {
                 }
             }
             if (rejected) {
-                logger.debug("{}", rejected);
+                logger.debug("{}", util::Redactor::instance().text(rejected));
                 return;
             }
             if (options.inject(peer, raw)) {
                 if (type == ConnectRequest) {
-                    logger.debug("Passing a friend's join to the server (connection {})", connectionId);
+                    logger.debug(
+                        "Passing a friend's join to the server (connection {})",
+                        util::Redactor::instance().id(connectionId)
+                    );
                     addStandIn(peer, connectionId, payload);
                 }
                 return;
@@ -384,7 +394,10 @@ struct Signaling::Impl {
         std::lock_guard lock(mutex);
         if (type == ConnectRequest) {
             if (offers.size() >= MaxOffers && !offers.contains(connectionId)) {
-                logger.debug("Too many joins waiting to be relayed; dropping connection {}", connectionId);
+                logger.debug(
+                    "Too many joins waiting to be relayed; dropping connection {}",
+                    util::Redactor::instance().id(connectionId)
+                );
                 return;
             }
             auto now             = Clock::now();
@@ -398,7 +411,11 @@ struct Signaling::Impl {
             }
         } else if (type == ConnectError) {
             offers.erase(connectionId);
-            logger.debug("Join {} was abandoned by the player's game: {}", connectionId, payload);
+            logger.debug(
+                "Join {} was abandoned by the player's game: {}",
+                util::Redactor::instance().id(connectionId),
+                util::Redactor::instance().text(payload)
+            );
         }
     }
 
@@ -469,7 +486,7 @@ struct Signaling::Impl {
             try {
                 handle(*text);
             } catch (std::exception const& e) {
-                logger.debug("Ignoring a malformed signaling message: {}", e.what());
+                logger.debug("Ignoring a malformed signaling message: {}", util::Redactor::instance().text(e.what()));
             }
         }
         bool report = false;
@@ -533,16 +550,16 @@ struct Signaling::Impl {
 
     void relay(std::string const& connectionId, PendingOffer offer) {
         std::string sdp = completeOffer(offer);
-        dump("last-offer.sdp", sdp);
+        dump("last-offer.sdp", util::Redactor::instance().sdp(sdp));
         // The game joins a NetherNet server as itself: /v1/join/<its own NetherNet id> (digits only, see onSignal).
         std::string const& joinId = offer.senderNetherNetId;
         dump(
             "last-ids.txt",
             fmt::format(
                 "connection {}\nsender netherNetId {}\nsender player {}\n",
-                connectionId,
-                offer.senderNetherNetId,
-                offer.sender
+                util::Redactor::instance().id(connectionId),
+                util::Redactor::instance().id(offer.senderNetherNetId),
+                util::Redactor::instance().player(offer.sender)
             )
         );
 
@@ -565,7 +582,14 @@ struct Signaling::Impl {
         },
             sdp
         );
-        dump("last-answer.txt", fmt::format("{}\n\n{}", res.describe(), res.body));
+        dump(
+            "last-answer.txt",
+            fmt::format(
+                "{}\n\n{}",
+                util::Redactor::instance().text(res.describe()),
+                util::Redactor::instance().sdp(res.body)
+            )
+        );
         if (!res.ok() || res.body.empty()) {
             int code = res.error.empty() ? ErrorConnectRequest : ErrorServerNotFound;
             logger.error(
@@ -573,7 +597,7 @@ struct Signaling::Impl {
                 std::chrono::duration_cast<std::chrono::milliseconds>(Clock::now() - started).count(),
                 res.describe()
             );
-            logger.debug("BDS refused the join of connection {}", connectionId);
+            logger.debug("BDS refused the join of connection {}", util::Redactor::instance().id(connectionId));
             sendSignal(offer.sender, fmt::format("{} {} {}", ConnectError, connectionId, code));
             return;
         }
@@ -608,7 +632,10 @@ struct Signaling::Impl {
             if (refreshTurn) requestTurnAuth();
             for (auto& [connectionId, offer] : ready) {
                 if (Clock::now() - offer.received > OfferStaleAfter) {
-                    logger.debug("Join {} waited too long behind others to be relayed; dropping it", connectionId);
+                    logger.debug(
+                        "Join {} waited too long behind others to be relayed; dropping it",
+                        util::Redactor::instance().id(connectionId)
+                    );
                     continue;
                 }
                 relay(connectionId, std::move(offer));

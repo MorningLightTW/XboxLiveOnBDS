@@ -23,6 +23,7 @@
 #include "xbox_live_on_bds/auth/XboxAuth.h"
 #include "xbox_live_on_bds/net/Http.h"
 #include "xbox_live_on_bds/util/Encoding.h"
+#include "xbox_live_on_bds/util/Redact.h"
 #include "xbox_live_on_bds/xbl/RtaClient.h"
 #include "xbox_live_on_bds/xbl/Signaling.h"
 
@@ -286,7 +287,10 @@ struct LobbySession::Impl {
         );
         auto j = json::parse(res.body, nullptr, false);
         if (!res.ok() || !j.is_object()) {
-            logger.debug("Could not read the host account's activity handle: {}", res.describe());
+            logger.debug(
+                "Could not read the host account's activity handle: {}",
+                util::Redactor::instance().text(res.describe())
+            );
             return Handle::Unknown;
         }
         try {
@@ -300,7 +304,10 @@ struct LobbySession::Impl {
                 return *active ? Handle::Elsewhere : Handle::Gone;
             }
         } catch (json::exception const&) {
-            logger.debug("Could not read the host account's activity handle: {}", res.describe());
+            logger.debug(
+                "Could not read the host account's activity handle: {}",
+                util::Redactor::instance().text(res.describe())
+            );
             return Handle::Unknown;
         }
         return Handle::Gone;
@@ -542,7 +549,7 @@ struct LobbySession::Impl {
             snapshot.worldName
         );
         // Not at info level: a console log gets pasted when asking for help, and joins are signaled to this id.
-        logger.debug("The session advertises NetherNet id {}", snapshot.netherNetId);
+        logger.debug("The session advertises NetherNet id {}", util::Redactor::instance().id(snapshot.netherNetId));
         return true;
     }
 
@@ -604,12 +611,18 @@ struct LobbySession::Impl {
             if (stop.stop_requested()) break;
 
             if (signalingDropped) {
-                logger.debug("The Minecraft signaling connection ended ({}); reconnecting", signalingReason);
+                logger.debug(
+                    "The Minecraft signaling connection ended ({}); reconnecting",
+                    util::Redactor::instance().text(signalingReason)
+                );
                 dropSignaling();
                 if (!signalingReconnect.at) signalingReconnect.at = Clock::now();
             }
             if (rtaDropped) {
-                logger.debug("The Xbox Live RTA connection ended ({}); reconnecting", rtaReason);
+                logger.debug(
+                    "The Xbox Live RTA connection ended ({}); reconnecting",
+                    util::Redactor::instance().text(rtaReason)
+                );
                 dropRta();
                 if (!rtaReconnect.at) rtaReconnect.at = Clock::now();
             }

@@ -14,6 +14,7 @@
 #include "xbox_live_on_bds/auth/Signing.h"
 #include "xbox_live_on_bds/net/Http.h"
 #include "xbox_live_on_bds/util/Encoding.h"
+#include "xbox_live_on_bds/util/Redact.h"
 
 namespace xbox_live_on_bds::auth {
 
@@ -299,7 +300,10 @@ struct XboxAuth::Impl {
             // the code the owner is typing in. Keep polling until the code expires.
             std::string error = j && j->is_object() ? j->value("error", "") : "";
             if (error.empty() || !poll.error.empty() || poll.status >= 500 || poll.status == 429) {
-                logger.debug("Could not ask Microsoft about the sign-in ({}); asking again", describeFailure(poll));
+                logger.debug(
+                    "Could not ask Microsoft about the sign-in ({}); asking again",
+                    util::Redactor::instance().text(describeFailure(poll))
+                );
                 continue;
             }
             if (error == "authorization_pending") continue;

@@ -8,6 +8,8 @@
 #include "ll/api/service/Bedrock.h"
 #include "ll/api/thread/ServerThreadExecutor.h"
 
+#include "xbox_live_on_bds/util/Redact.h"
+
 #include "mc/world/actor/player/Player.h"
 #include "mc/world/level/Level.h"
 
@@ -91,7 +93,11 @@ void LinkMonitor::sampleAll() {
         if (!status) continue;
         bool relay = status->mUsingRelays;
         if (!link.pings.empty() && relay != link.lastRelay) {
-            mLogger.debug("{} switched to a {}", link.name, relay ? "Microsoft relay" : "direct connection");
+            mLogger.debug(
+                "{} switched to a {}",
+                util::Redactor::instance().player(link.name),
+                relay ? "Microsoft relay" : "direct connection"
+            );
         }
         link.lastRelay = relay;
         link.pings.push_back(status->mCurrentPing->count());
@@ -101,7 +107,7 @@ void LinkMonitor::sampleAll() {
             link.reported = true;
             mLogger.debug(
                 "{} is on a {}, ping {} ms, packet loss {:.1f}%",
-                link.name,
+                util::Redactor::instance().player(link.name),
                 pathName(relay),
                 status->mAveragePing->count(),
                 status->mAveragePacketLoss * 100.0f
@@ -120,7 +126,7 @@ void LinkMonitor::summarize(Link const& link) const {
     mLogger.debug(
         "{} left after {:.1f} min: ping min {} / median {} / 95% {} / max {} ms, jitter {:.0f} ms, worst packet loss "
         "{:.1f}%, on a relay {}% of the time ({} samples)",
-        link.name,
+        util::Redactor::instance().player(link.name),
         minutes,
         sorted.front(),
         percentile(sorted, 0.5),
