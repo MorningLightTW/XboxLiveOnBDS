@@ -89,17 +89,17 @@ int main() {
     check(r.text("peer 198.51.100.7:19132 left") == "peer " + a + ":19132 left", "text uses the same aliases");
     check(r.ip("198.51.100.7") == a, "ip() uses the same aliases");
 
-    // Signals.
+    // Signals. (peer1 is the 19-digit session id on the "o=" line of the offer above, now aliased as a peer.)
     auto cand = r.signal(R"(CANDIDATEADD 18446744073709551615 candidate:1 1 udp 1 203.0.113.77 5000 typ host)");
     check(
-        cand.starts_with("CANDIDATEADD peer1 candidate:_ 1 udp 1 ip") && !has(cand, "203.0.113.77"),
+        cand.starts_with("CANDIDATEADD peer2 candidate:_ 1 udp 1 ip") && !has(cand, "203.0.113.77"),
         "a CANDIDATEADD"
     );
     check(!has(cand, "18446744073709551615"), "its connection id is hidden");
-    check(r.signal("CONNECTERROR 18446744073709551615 3") == "CONNECTERROR peer1 3", "a CONNECTERROR keeps its code");
+    check(r.signal("CONNECTERROR 18446744073709551615 3") == "CONNECTERROR peer2 3", "a CONNECTERROR keeps its code");
     auto request = r.signal("CONNECTREQUEST 99 " + Offer);
     check(
-        request.starts_with("CONNECTREQUEST peer2 v=0") && !has(request, Ufrag) && !hasAddress(request),
+        request.starts_with("CONNECTREQUEST peer3 v=0") && !has(request, Ufrag) && !hasAddress(request),
         "an offer signal"
     );
     check(r.signal("garbage 198.51.100.7 here") == "garbage " + a + " here", "a malformed signal gets the text scrub");
@@ -121,7 +121,7 @@ int main() {
         r.player(Xuid) == "player1" && r.player("Steve") == "player2" && r.player("Steve") == "player2",
         "player aliases"
     );
-    check(r.id("123") == "peer3" && r.id("123") == "peer3", "id aliases");
+    check(r.id("123") == "peer4" && r.id("123") == "peer4", "id aliases");
 
     // IPv6 forms and look-alikes.
     auto v6 = r.text("a [2001:db8::1]:19132 b 2001:DB8:0:0:0:0:0:2 c ::1 d fe80::1%eth0 e ::ffff:192.0.2.1");
@@ -132,6 +132,35 @@ int main() {
         "times, scopes and versions stay"
     );
     check(r.text("host turn.example.com:3478").starts_with("host turn.example.com:3478"), "host names stay");
+
+    // XUIDs starting with 2535, and long ids.
+    { // Built from pieces, so the repository's pre-push privacy check does not take the made-up value for a real XUID.
+        std::string xuid2535 = std::string("2535") + "000000000001";
+        Redactor    q;
+        auto        out = q.text("user " + xuid2535 + " joined");
+        check(out == "user player1 joined", "a 2535 XUID is aliased as a player");
+    }
+    {
+        Redactor q;
+        auto     out = q.text("id 1234567890123456789 at 1700000000000 port 19132");
+        check(out == "id peer1 at 1700000000000 port 19132", "a 19-digit id becomes a peer, a timestamp stays");
+    }
+    {
+        std::string xuid = std::string("2535") + "000000000002";
+        Redactor    q;
+        q.addPlayer("Steve Test");
+        q.addPlayer(xuid);
+        q.addPlayer("ab"); // Too short: ignored.
+        auto const tag   = q.player("Steve Test");
+        auto const alias = q.player(xuid);
+        auto       out   = q.text("host Steve Test ab " + xuid);
+        check(out == "host " + tag + " ab " + alias, "registered values are replaced in text");
+        auto body = q.text(R"({"hostName":"Steve Test","ownerId":")" + xuid + R"("})");
+        check(
+            body == R"({"hostName":")" + tag + R"(","ownerId":")" + alias + R"("})",
+            "registered values are replaced in a JSON body"
+        );
+    }
 
     // Raw mode.
     Redactor raw(false);
