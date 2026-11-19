@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - The console log no longer shows parts of sign-in tokens when Microsoft sends an unexpected answer, and no longer shows the ids of friends' joins outside the debug log.
+- Console warnings and errors no longer show the text of Microsoft's, Xbox Live's or the server's replies, parts of `data/auth.json`, or the folders the server is in. The debug log still shows the replies, with stand-in names.
 
 ### Added
 

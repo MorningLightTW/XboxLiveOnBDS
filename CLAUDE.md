@@ -32,7 +32,7 @@ xmake build <stun-test|udp-ports-test|signal-text-test|device-auth-test> && xmak
 - Xbox joins get only the TURN relays of the signaling service as ICE servers. The game does the same when it hosts a world. Other joins keep the ICE servers of BDS.
 - Do not block the network thread or the main thread of BDS (hooks, event handlers). Wait only on threads of the mod.
 - Do not trust remote input. nlohmann `value()` and `get<>()` throw an exception on a wrong type. Thus, put the handling of each signaling or RTA message in try/catch. Give each table with keys from remote data a size limit and an expiry time.
-- `/xbl ping` and info-level logs must not show IPs or ids.
+- `/xbl ping` and info, warn and error logs must not show IPs, ids, local paths or HTTP bodies. Users paste these logs into public issues. Use `describeStatus()` for a reply and `util::describeException` for an exception. Put the details in a debug line through `util::Redactor`.
 
 ## BDS / LeviLamina facts the code relies on
 
