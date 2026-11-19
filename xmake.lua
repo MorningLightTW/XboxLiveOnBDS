@@ -123,3 +123,16 @@ target("signal-text-test")
     end
     add_includedirs("src")
     add_files("src/xbox_live_on_bds/xbl/SignalText.cpp", "tests/signal_text_test.cpp")
+
+-- What the debug output hides (addresses, ids, tokens), offline: xmake build redact-test && xmake run redact-test
+target("redact-test")
+    set_default(false)
+    set_kind("binary")
+    set_languages("c++23")
+    if is_plat("windows") then
+        set_toolchains("clang-cl")
+        add_cxflags("/utf-8")
+        add_defines("NOMINMAX", "UNICODE")
+    end
+    add_includedirs("src")
+    add_files("src/xbox_live_on_bds/util/Redact.cpp", "tests/redact_test.cpp")
