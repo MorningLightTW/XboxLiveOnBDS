@@ -8,10 +8,7 @@
 > - The mod signs in to Xbox Live as if it were the game itself. The host account could be restricted or banned. **Use a separate account, never your main one.**
 > - `mods/xbox-live-on-bds/data/auth.json` holds the host account's sign-in and is not encrypted. Anyone who gets this file can use the account. Do not share it, and remove it before sharing or backing up the server folder.
 
-Your friends see your Bedrock Dedicated Server (BDS) in the in-game Friends tab and join with one tap.
-
-- **No public IP and no router setup needed.**
-- The server hosts as one Xbox account (the host account). All friends of that account can join.
+Adds friend-hosted worlds to Bedrock Dedicated Server (BDS): the server shows up in the Friends tab like a world a friend is hosting, and friends join with one tap.
 
 ## Requirements
 
