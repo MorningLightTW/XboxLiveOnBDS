@@ -75,7 +75,7 @@ To limit who can join, use the server's allow list (`allow-list`).
 
 ## Common problems
 
-**Players cannot see the server**: the console must show `Xbox Live session is up`, and the player must be friends with the host account. If it shows `does not match the NetherNet internals`, install the release made for your LeviLamina version.
+**Players cannot see the server**: the console must show `Xbox Live session is up`, and the player must be friends with the host account. If it shows `does not match the NetherNet internals` or `lacks NetherNet functions`, the mod release and LeviLamina do not fit: the message names both LeviLamina versions. Install the release made for your LeviLamina version.
 
 **The server left the Friends tab**: the host account shows one world at a time. The server comes back about a minute after the host account leaves a world on another device.
 

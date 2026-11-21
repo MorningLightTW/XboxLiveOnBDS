@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - lip installs the mod only next to LeviLamina 26.60.8 or a later 26.60 version, the version it is built for. Before, lip also accepted older 26.60 versions, on some of which friends could not join.
 
+### Fixed
+
+- On a LeviLamina version that lacks what the mod needs for friends' joins, the server no longer shows in the Friends tab as a world nobody can join. The console now says so, with the LeviLamina version the mod is built for. The error for a mod that does not match the server also names both versions now.
+
 ## [0.2.1] - 2026-11-19
 
 ### Fixed

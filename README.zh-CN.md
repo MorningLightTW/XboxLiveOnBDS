@@ -75,7 +75,7 @@ Xbox Live session is up: ...
 
 ## 常见问题
 
-**玩家看不到服务器**：控制台要有 `Xbox Live session is up`，玩家也要和主机账号是好友。如果出现 `does not match the NetherNet internals`，请安装对应你 LeviLamina 版本的发行文件。
+**玩家看不到服务器**：控制台要有 `Xbox Live session is up`，玩家也要和主机账号是好友。如果出现 `does not match the NetherNet internals` 或 `lacks NetherNet functions`，表示 mod 发行文件和 LeviLamina 版本不匹配，消息会列出两边的 LeviLamina 版本。请安装对应你 LeviLamina 版本的发行文件。
 
 **服务器从好友页面消失**：主机账号一次只能显示一个世界。主机账号在别的设备上离开世界后，大约一分钟内服务器会回来。
 
