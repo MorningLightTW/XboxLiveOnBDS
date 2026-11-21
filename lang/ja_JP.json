@@ -1,0 +1,19 @@
+{
+    "XboxLiveOnBDS: your connection to this server": "XboxLiveOnBDS：このサーバーとの接続",
+    "Your connection:": "あなたの接続：",
+    "{}'s connection:": "{} の接続：",
+    "Route: {}": "接続方法：{}",
+    "Xbox Live friend join, direct (P2P)": "Xbox Live フレンド参加、直接接続（P2P）",
+    "Xbox Live friend join, through Microsoft's relay": "Xbox Live フレンド参加、Microsoft のリレー経由",
+    "NetherNet (LAN or by address), direct": "NetherNet（LAN またはアドレス指定）、直接接続",
+    "NetherNet (LAN or by address), through a relay": "NetherNet（LAN またはアドレス指定）、リレー経由",
+    "RakNet (by address)": "RakNet（アドレス指定）",
+    "Ping: {} ms now, {} ms average": "Ping：現在 {} ms、平均 {} ms",
+    "Jitter: {:.0f} ms": "ジッター：{:.0f} ms",
+    "Jitter: measuring": "ジッター：測定中",
+    "Packet loss: {:.1f}% now, {:.1f}% average": "パケットロス：現在 {:.1f}%、平均 {:.1f}%",
+    "Connected {:.0f} min, {}% of it through a relay": "接続時間 {:.0f} 分、うち {}% はリレー経由",
+    "Name a player when running this outside the game.": "ゲーム外で実行するときはプレイヤーを指定してください。",
+    "No player matched.": "一致するプレイヤーが見つかりません。",
+    "No connection data for {} yet.": "{} の接続データはまだありません。"
+}

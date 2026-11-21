@@ -1,0 +1,19 @@
+{
+    "XboxLiveOnBDS: your connection to this server": "XboxLiveOnBDS: 이 서버와의 연결",
+    "Your connection:": "내 연결:",
+    "{}'s connection:": "{}의 연결:",
+    "Route: {}": "연결 방식: {}",
+    "Xbox Live friend join, direct (P2P)": "Xbox Live 친구 참가, 직접 연결(P2P)",
+    "Xbox Live friend join, through Microsoft's relay": "Xbox Live 친구 참가, Microsoft 릴레이 경유",
+    "NetherNet (LAN or by address), direct": "NetherNet(LAN 또는 주소 지정), 직접 연결",
+    "NetherNet (LAN or by address), through a relay": "NetherNet(LAN 또는 주소 지정), 릴레이 경유",
+    "RakNet (by address)": "RakNet(주소 지정)",
+    "Ping: {} ms now, {} ms average": "핑: 현재 {} ms, 평균 {} ms",
+    "Jitter: {:.0f} ms": "지터: {:.0f} ms",
+    "Jitter: measuring": "지터: 측정 중",
+    "Packet loss: {:.1f}% now, {:.1f}% average": "패킷 손실: 현재 {:.1f}%, 평균 {:.1f}%",
+    "Connected {:.0f} min, {}% of it through a relay": "{:.0f}분 동안 연결됨, 그중 {}%는 릴레이 경유",
+    "Name a player when running this outside the game.": "게임 밖에서 실행할 때는 플레이어를 지정하세요.",
+    "No player matched.": "일치하는 플레이어가 없습니다.",
+    "No connection data for {} yet.": "{}의 연결 데이터가 아직 없습니다."
+}
