@@ -12,7 +12,7 @@ side = "server"
 platform = "win-x64"
 
 [variants."".deps]
-"github.com/LiteLDev/LeviLamina" = "26.60.*"
+"github.com/LiteLDev/LeviLamina" = ">=26.60.8 <26.61.0"
 
 [[variants."".assets]]
 type = "zip"
