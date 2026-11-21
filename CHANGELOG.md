@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- lip installs the mod only next to LeviLamina 26.60.8 or a later 26.60 version, the version it is built for. Before, lip also accepted older 26.60 versions, on some of which friends could not join.
+
 ## [0.2.1] - 2026-11-19
 
 ### Fixed
