@@ -16,6 +16,7 @@
 
 #include <fmt/format.h>
 
+#include "ll/api/Versions.h"
 #include "ll/api/io/Logger.h"
 
 #include "ll/api/memory/Hook.h"
@@ -120,15 +121,31 @@ std::optional<std::string> serialize(Signal const& signal) {
 enum class Layout { Unchecked, Verified, Mismatch };
 std::atomic<Layout> layoutState{Layout::Unchecked};
 std::atomic<bool>   reportedMismatch{false};
-ll::io::Logger*     logger = nullptr;
+// False when LeviLamina could not install a required hook; set once by install().
+std::atomic<bool> hooksInstalled{true};
+std::atomic<bool> reportedMissingHooks{false};
+ll::io::Logger*   logger = nullptr;
+
+// The LeviLamina version that runs now, without build metadata. Only for error messages.
+std::string runningLeviLaminaVersion() {
+    try {
+        auto version = ll::getLoaderVersion();
+        version.build.reset();
+        return version.to_string();
+    } catch (...) {
+        return "(unknown version)";
+    }
+}
 
 void reportMismatch() {
     layoutState.store(Layout::Mismatch);
     if (!reportedMismatch.exchange(true) && logger) {
         logger->error(
-            "This build of XboxLiveOnBDS does not match the NetherNet internals of this server (LeviLamina or BDS "
-            "version), so friends cannot join through Xbox Live and the server is not shown in the Friends tab. "
-            "Update the mod."
+            "This build of XboxLiveOnBDS does not match the NetherNet internals of this server (LeviLamina {}; it is "
+            "built for LeviLamina {}), so friends cannot join through Xbox Live and the server is not shown in the "
+            "Friends tab. Use the mod release made for your LeviLamina version.",
+            runningLeviLaminaVersion(),
+            LEVILAMINA_BUILD_VERSION
         );
     }
 }
@@ -360,9 +377,39 @@ void reportDropped(std::size_t joins) {
 
 } // namespace
 
+namespace {
+// Installs the hooks once. hook() returns 0 on success. A hook that fails (LeviLamina lacks the function) is left out;
+// the ones that did install are harmless, because prime() and deliver() stop any use when one is missing.
+struct HookGuard {
+    bool capture = false, forward = false, relay = false;
+
+    HookGuard()
+    : capture(CaptureTransportHook::hook() == 0),
+      forward(ForwardToPeersHook::hook() == 0),
+      relay(AddRelayServersHook::hook() == 0) {
+        // Keeps the hooks' reference counts as HookRegistrar did (this also uses the member, which is otherwise
+        // unused).
+        ++CaptureTransportHook::_AutoHookCount;
+        ++ForwardToPeersHook::_AutoHookCount;
+        ++AddRelayServersHook::_AutoHookCount;
+        hooksInstalled.store(capture && forward && relay);
+    }
+    ~HookGuard() {
+        --CaptureTransportHook::_AutoHookCount;
+        --ForwardToPeersHook::_AutoHookCount;
+        --AddRelayServersHook::_AutoHookCount;
+        if (capture) CaptureTransportHook::unhook();
+        if (forward) ForwardToPeersHook::unhook();
+        if (relay) AddRelayServersHook::unhook();
+    }
+    HookGuard(HookGuard const&)            = delete;
+    HookGuard& operator=(HookGuard const&) = delete;
+};
+} // namespace
+
 void install(ll::io::Logger& log) {
     logger = &log;
-    static ll::memory::HookRegistrar<CaptureTransportHook, ForwardToPeersHook, AddRelayServersHook> registrar;
+    static HookGuard guard;
 }
 
 void setRelayServers(std::vector<RelayServer> servers) {
@@ -413,6 +460,18 @@ void onPlayerLeft(NetworkIdentifier const& player) {
 }
 
 bool prime(std::uint16_t port) {
+    if (!hooksInstalled.load()) {
+        if (!reportedMissingHooks.exchange(true) && logger) {
+            logger->error(
+                "LeviLamina {} lacks NetherNet functions this mod needs (it is built for LeviLamina {}), so friends "
+                "cannot join and the server is not shown in the Friends tab. Use the mod release made for your "
+                "LeviLamina version.",
+                runningLeviLaminaVersion(),
+                LEVILAMINA_BUILD_VERSION
+            );
+        }
+        return false;
+    }
     if (layoutState.load() == Layout::Verified) return true;
     if (layoutState.load() == Layout::Mismatch) return false;
     // A NetherNet id no friend has (theirs are random 64-bit values); BDS's reply to it goes nowhere.
@@ -458,6 +517,7 @@ bool prime(std::uint16_t port) {
 }
 
 bool deliver(std::uint64_t from, std::string_view signal) {
+    if (!hooksInstalled.load()) return true;
     // Not the layout we guessed: touch nothing, and drop the signal rather than fall back to HTTP signaling.
     if (layoutState.load() == Layout::Mismatch) return true;
     auto* target = transport.load();

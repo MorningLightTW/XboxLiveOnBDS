@@ -25,6 +25,7 @@ end
 target("xbox-live-on-bds")
     set_version(mod_version)
     add_defines("XBOX_LIVE_ON_BDS_VERSION=\"" .. mod_version .. "\"")
+    add_defines("LEVILAMINA_BUILD_VERSION=\"" .. levilamina_version .. "\"")
     add_rules("@levibuildscript/linkrule")
     add_rules("@levibuildscript/modpacker", {modVersion = mod_version})
     -- The modpacker copies the DLL and manifest only; the translations go next to them.

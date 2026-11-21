@@ -19,7 +19,8 @@ namespace xbox_live_on_bds::bds {
 /// sides checking at once, which BDS's HTTP signaling (one complete answer, no trickle) cannot do across NAT.
 namespace transport_bridge {
 
-/// Installs the hooks. Call from load(), before the server builds its network.
+/// Installs the hooks. Call from load(), before the server builds its network. If LeviLamina cannot install a
+/// required hook (it lacks the function), prime() reports it and returns false.
 void install(ll::io::Logger& logger);
 
 /// Whether the transport has been seen yet (it is, once it handles its first signal after start).
@@ -30,9 +31,10 @@ void install(ll::io::Logger& logger);
 /// (CONNECTERROR, no peer connection). The hooks compare what they read of the probe with BDS's own text for its
 /// id. Runs the probe until the layout is verified (then it returns at once). Blocks for the request and up to
 /// about a second more; call it off the game's threads.
-/// Returns false only when the layout does not match this server's NetherNet: the mod then does nothing with the
-/// transport, and the server must not be published (an error is logged). True otherwise, also when the transport
-/// could not be reached (that is warned about; the check is tried again on the next call).
+/// Returns false only when a required hook could not be installed, or when the layout does not match this server's
+/// NetherNet: the mod then does nothing with the transport, and the server must not be published (an error is
+/// logged). True otherwise, also when the transport could not be reached (that is warned about; the check is tried
+/// again on the next call).
 bool prime(std::uint16_t port);
 
 /// Delivers "<TYPE> <connection id> <payload>" from the peer `from`. False if the transport is not known yet. After a
