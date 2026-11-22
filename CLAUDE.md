@@ -46,6 +46,18 @@ xmake build <stun-test|udp-ports-test|signal-text-test|device-auth-test> && xmak
 - BDS does not write `logs\latest.log` while it runs. Redirect the console to a file. PowerShell 5.1 adds a BOM to the start of piped stdin. Thus, send an empty line first.
 - `data/debug.flag` turns on the debug log, the signaling trace and join dumps in `data/debug/`. `util::Redactor` replaces IPs, ids, names and tokens in all of them with aliases. Send each new debug line or dump through it. `data/debug-raw.flag` turns off the redactor. Its output contains IPs and identity tokens. Delete it after use.
 
+## Log messages
+
+These rules apply to info, warn and error lines. They follow the [Windows error message guidelines](https://learn.microsoft.com/en-us/windows/win32/debug/error-message-guidelines).
+
+- Tell what occurred, what the mod does next, and what the owner must do, if anything. Example: `Could not read config/config.json (...); using the defaults`.
+- Use error only when a feature stops and the mod cannot recover alone. Use warn when the mod tries again, uses a default or waits for the owner. An expected event is not an error. Examples: a sign-in code expires, or a retry occurs.
+- Write a different message for each known cause. Give the cause in plain words, not only an HTTP status.
+- Log a cause one time. A failure that comes from a failure already logged goes to debug, or the mod does not log it.
+- The text must agree with the code. Do not tell the owner to restart when the mod tries again by itself.
+- Use words the owner knows: Microsoft account, Xbox Live, Friends tab, sign-in. Put internal names (SISU, XSTS, RTA, PlayFab) and status codes in a debug line.
+- Do not blame the owner. Do not use "please", "bad", capital letters for emphasis or "!".
+
 ## Conventions
 
 - These items are out of scope. Do not add TODOs for them: automatic friend add or accept, MPSD session rotation, more than one host account.
