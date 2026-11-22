@@ -6,7 +6,7 @@ add_repositories("levimc-repo https://github.com/LiteLDev/xmake-repo.git")
 local levilamina_version = "26.60.8"
 
 -- Keep lip.toml's "version" in sync.
-local mod_version = "0.3.0"
+local mod_version = "0.4.0"
 
 option("target_type")
     set_default("server")
