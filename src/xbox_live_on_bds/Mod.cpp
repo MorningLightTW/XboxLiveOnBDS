@@ -41,14 +41,16 @@ void Mod::loadConfig() {
     auto   path   = getSelf().getConfigDir() / "config.json";
     Config config;
     try {
-        // Creates the file with the defaults, or adds the fields an older file lacks.
+        // Creates the file with the defaults. When the file's version is older, rewrites it with the missing
+        // fields added at their defaults and the existing values kept.
         if (!ll::config::loadConfig(config, path)) ll::config::saveConfig(config, path);
     } catch (std::exception const& e) {
         // Leave a broken file as it is for its owner to fix, rather than overwrite it.
         logger.warn("config.json: could not read it ({}); using the defaults", util::describeException(e));
         config = {};
     }
-    mVisibility = config.visibility == "friends" ? xbl::Visibility::Friends : xbl::Visibility::FriendsOfFriends;
+    mDebugConfig = config.debug;
+    mVisibility  = config.visibility == "friends" ? xbl::Visibility::Friends : xbl::Visibility::FriendsOfFriends;
     if (config.visibility != "friends" && config.visibility != "friendsOfFriends") {
         logger.warn(
             "config.json: visibility \"{}\" is not \"friends\" or \"friendsOfFriends\"; using \"friendsOfFriends\"",
@@ -86,16 +88,17 @@ bool Mod::load() {
     if (auto warning = net::checkServerUdpPorts("server.properties")) {
         getSelf().getLogger().warn("Friends' joins: {}", *warning);
     }
-    // Debugging switches, empty files in the data directory:
-    // - "debug.flag" turns this mod's log up to debug (why a connection dropped, reconnects, held joins, per-player
-    //   link quality), logs every NetherNet signal and writes joins relayed over HTTP (offer, answer, ids) to
-    //   data/debug/. Addresses, ids, names and tokens in the log and in those files are replaced by aliases, so
-    //   they can go into a public issue.
+    // Debugging switches. Owners set "debug": true in config.json; the empty files in the data directory are for
+    // developers:
+    // - "debug" in config.json, or "debug.flag", turns this mod's log up to debug (why a connection dropped,
+    //   reconnects, held joins, per-player link quality), logs every NetherNet signal and writes joins relayed
+    //   over HTTP (offer, answer, ids) to data/debug/. Addresses, ids, names and tokens in the log and in those
+    //   files are replaced by aliases, so they can go into a public issue.
     // - "debug-raw.flag" does the same without the replacing, and implies debug. The log and the files then hold
     //   players' addresses and identity tokens: never share them, and delete the files when done.
     auto dataDir = getSelf().getDataDir();
     bool raw     = std::filesystem::exists(dataDir / "debug-raw.flag");
-    if (raw || std::filesystem::exists(dataDir / "debug.flag")) {
+    if (raw || mDebugConfig || std::filesystem::exists(dataDir / "debug.flag")) {
         mDebug = true;
         util::Redactor::instance().setEnabled(!raw);
         getSelf().getLogger().setLevel(ll::io::LogLevel::Debug);

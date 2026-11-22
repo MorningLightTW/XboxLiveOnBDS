@@ -43,6 +43,7 @@ private:
     std::set<std::string>               mOnline;  // Players in game, by UUID (server thread only).
     std::vector<ll::event::ListenerPtr> mListeners;
     bool                                mDebug       = false;
+    bool                                mDebugConfig = false;                             // "debug" in config.json.
     xbl::Visibility                     mVisibility  = xbl::Visibility::FriendsOfFriends; // From config.json.
     xbl::PlayerCount                    mPlayerCount = xbl::PlayerCount::IncludeHost;     // From config.json.
 };
