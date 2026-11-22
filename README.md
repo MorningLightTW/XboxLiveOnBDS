@@ -25,7 +25,7 @@ With the server stopped, run this in the server folder:
 lip install github.com/MorningLightTW/XboxLiveOnBDS
 ```
 
-lip puts the mod into `mods/` and installs LeviLamina too if it is missing. Update later with `lip update`. This needs lip 0.40.0 or newer (`lip --version`); an older lip answers that the package's `lip.toml` is not valid.
+Needs lip 0.40.0 or newer. lip also installs LeviLamina if it is missing. Update with `lip update`.
 
 ### By hand
 
@@ -55,9 +55,7 @@ Later restarts do not ask you to sign in again.
 
 ## Let players join
 
-Once a player and the host account have added each other as friends, the server appears in the player's Friends tab.
-
-You add friends yourself with the host account; the mod does not do it for you.
+Add each player as a friend with the host account (the mod does not do this). The server then shows in their Friends tab.
 
 ## Check your connection
 
@@ -69,14 +67,14 @@ The defaults work as they are. The file is `mods/xbox-live-on-bds/config/config.
 
 | Field | Default | Meaning |
 |---|---|---|
-| `visibility` | `"friendsOfFriends"` | Who can see the server. `"friendsOfFriends"`: friends, and friends of players on the server. `"friends"`: friends only |
+| `visibility` | `"friendsOfFriends"` | Who sees the server<br>`"friends"`: friends only<br>`"friendsOfFriends"`: also friends of players on it |
 | `playerCount` | `"includeHost"` | The count in the Friends tab<br>`"includeHost"`: players + 1 for the host<br>`"playersOnly"`: players only (at least 1) |
 
 To limit who can join, use the server's allow list (`allow-list`).
 
 ## Common problems
 
-**Players cannot see the server**: the console must show `Xbox Live session is up`, and the player must be friends with the host account. If it shows `does not match the NetherNet internals` or `lacks NetherNet functions`, the mod release and LeviLamina do not fit: the message names both LeviLamina versions. Install the release made for your LeviLamina version.
+**Players cannot see the server**: the console must show `Xbox Live session is up`, and the player must be a friend of the host account. On `does not match the NetherNet internals` or `lacks NetherNet functions`, install the release for your LeviLamina version (the message names it).
 
 **The server left the Friends tab**: the host account shows one world at a time. The server comes back about a minute after the host account leaves a world on another device.
 
@@ -86,7 +84,7 @@ To limit who can join, use the server's allow list (`allow-list`).
 
 **Changing the host account**: stop the server, delete `mods/xbox-live-on-bds/data/auth.json`, then start it and sign in again.
 
-**Reporting a problem**: create an empty `mods/xbox-live-on-bds/data/debug.flag`, restart, make the problem happen, then open a [bug report](https://github.com/MorningLightTW/XboxLiveOnBDS/issues/new?template=bug.yml). The form says what to attach.
+**Reporting a problem**: create an empty `mods/xbox-live-on-bds/data/debug.flag`, restart, make the problem happen, then open a [bug report](https://github.com/MorningLightTW/XboxLiveOnBDS/issues/new?template=bug.yml).
 
 ## Build it yourself
 
@@ -104,17 +102,15 @@ xmake f -y -p windows -a x64 -m release
 xmake -y
 ```
 
-The first run downloads a lot and takes a while. After `build ok`, the result is in `bin\xbox-live-on-bds\`; copy that folder into the server's `mods/`.
-
-When updating an older version, keep `mods/xbox-live-on-bds/data/` so you do not have to sign in again.
+After `build ok`, copy `bin\xbox-live-on-bds\` into the server's `mods/`. To update, keep `mods/xbox-live-on-bds/data/`: it holds the sign-in.
 
 ## References
 
-How Xbox Live and NetherNet work is not documented by Microsoft. These projects were the reference for the parts below:
+Microsoft does not document Xbox Live or NetherNet. References:
 
-- [df-mc/go-xsapi](https://github.com/df-mc/go-xsapi): reconnecting to Xbox Live's real-time service (RTA) without taking the session down, so the server stays in the Friends tab.
-- [df-mc/go-nethernet](https://github.com/df-mc/go-nethernet): the relay (TURN) credentials the signaling service hands out and when they expire, waiting for them before answering a join, and using only those relays for a friend's join (as [gophertunnel](https://github.com/Sandertv/gophertunnel) does too).
-- [MCXboxBroadcast](https://github.com/MCXboxBroadcast/Broadcaster): the format of the Xbox Live session a world is listed with, and how a join is handed to the server's HTTP signaling (status check first, IPv4 candidates only), which this mod only uses as a fallback. Its design is the opposite of this one: it lists a server and then transfers the player to it, while here the friend joins BDS itself.
+- [df-mc/go-xsapi](https://github.com/df-mc/go-xsapi): reconnecting to RTA without taking the session down.
+- [df-mc/go-nethernet](https://github.com/df-mc/go-nethernet): the relay (TURN) credentials, and using only those relays for friends' joins (as [gophertunnel](https://github.com/Sandertv/gophertunnel) does).
+- [MCXboxBroadcast](https://github.com/MCXboxBroadcast/Broadcaster): the Xbox Live session format and the HTTP signaling fallback. It transfers players to another server; here friends join BDS itself.
 
 ## License
 

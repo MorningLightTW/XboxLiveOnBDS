@@ -25,7 +25,7 @@
 lip install github.com/MorningLightTW/XboxLiveOnBDS
 ```
 
-lip 會把模組放進 `mods/`，沒有 LeviLamina 的話也會一起裝。之後用 `lip update` 更新。需要 lip 0.40.0 或更新的版本（`lip --version`）；舊版 lip 會說這個套件的 `lip.toml` 無效。
+需要 lip 0.40.0 以上。沒有 LeviLamina 的話，lip 會一起裝。用 `lip update` 更新。
 
 ### 手動安裝
 
@@ -55,9 +55,7 @@ Xbox Live session is up: ...
 
 ## 讓玩家加入
 
-玩家和主機帳號互加好友後，打開遊戲的「好友」分頁就會看到伺服器。
-
-加好友要你自己用主機帳號操作，模組不會自動加。
+用主機帳號和玩家互加好友（模組不會自動加），伺服器就會出現在對方的「好友」分頁。
 
 ## 查看連線狀態
 
@@ -69,14 +67,14 @@ Xbox Live session is up: ...
 
 | 欄位 | 預設 | 說明 |
 |---|---|---|
-| `visibility` | `"friendsOfFriends"` | 誰看得到伺服器。`"friendsOfFriends"`：好友，以及伺服器內玩家的好友。`"friends"`：只有好友 |
+| `visibility` | `"friendsOfFriends"` | 誰看得到伺服器<br>`"friends"`：只有好友<br>`"friendsOfFriends"`：再加上伺服器內玩家的好友 |
 | `playerCount` | `"includeHost"` | 好友分頁的人數<br>`"includeHost"`：玩家數 + 1（主機）<br>`"playersOnly"`：只算玩家（至少 1） |
 
 要限制誰能進來，請用伺服器的白名單（`allow-list`）。
 
 ## 常見問題
 
-**玩家看不到伺服器**：主控台要有 `Xbox Live session is up`，玩家也要和主機帳號是好友。如果出現 `does not match the NetherNet internals` 或 `lacks NetherNet functions`，表示 mod 發行檔和 LeviLamina 版本不合，訊息會列出兩邊的 LeviLamina 版本。請安裝對應你 LeviLamina 版本的發行檔。
+**玩家看不到伺服器**：主控台要有 `Xbox Live session is up`，玩家也要是主機帳號的好友。出現 `does not match the NetherNet internals` 或 `lacks NetherNet functions` 時，請安裝對應你 LeviLamina 版本的發行檔（訊息會列出版本）。
 
 **伺服器從好友分頁消失**：主機帳號一次只能顯示一個世界。主機帳號在別台裝置離開世界後，大約一分鐘內伺服器會回來。
 
@@ -86,7 +84,7 @@ Xbox Live session is up: ...
 
 **想換主機帳號**：關閉伺服器，刪除 `mods/xbox-live-on-bds/data/auth.json`，再啟動並重新登入。
 
-**回報問題**：建立空檔案 `mods/xbox-live-on-bds/data/debug.flag`，重啟並讓問題再發生一次，然後開一個[問題回報](https://github.com/MorningLightTW/XboxLiveOnBDS/issues/new?template=bug.yml)，表單會說明要附什麼。
+**回報問題**：建立空檔案 `mods/xbox-live-on-bds/data/debug.flag`，重啟並讓問題再發生一次，然後開一個[問題回報](https://github.com/MorningLightTW/XboxLiveOnBDS/issues/new?template=bug.yml)。
 
 ## 自行建置
 
@@ -104,17 +102,15 @@ xmake f -y -p windows -a x64 -m release
 xmake -y
 ```
 
-第一次會下載不少檔案，需要等一下。看到 `build ok` 後，成品在 `bin\xbox-live-on-bds\`，把這個資料夾複製到伺服器的 `mods/` 即可。
-
-更新舊版時，請保留 `mods/xbox-live-on-bds/data/`，就不用重新登入。
+看到 `build ok` 後，把 `bin\xbox-live-on-bds\` 複製到伺服器的 `mods/`。更新時保留 `mods/xbox-live-on-bds/data/`，登入資料在那裡。
 
 ## 參考來源
 
-Xbox Live 與 NetherNet 的運作方式微軟沒有公開文件。以下幾個部分參考了這些專案：
+微軟沒有公開 Xbox Live 與 NetherNet 的文件。參考了：
 
-- [df-mc/go-xsapi](https://github.com/df-mc/go-xsapi)：與 Xbox Live 即時服務（RTA）斷線後重新連線、但不撤下 session 的做法，讓伺服器持續留在好友分頁。
-- [df-mc/go-nethernet](https://github.com/df-mc/go-nethernet)：signaling 服務發放的中繼（TURN）憑證與其有效期限、等憑證到了才回應加入，以及好友加入時只使用這些中繼伺服器（[gophertunnel](https://github.com/Sandertv/gophertunnel) 也是如此）。
-- [MCXboxBroadcast](https://github.com/MCXboxBroadcast/Broadcaster)：世界在 Xbox Live 上架時所用的 session 格式，以及把加入請求交給伺服器 HTTP signaling 的方式（先查狀態、只帶 IPv4 candidate）；這條路徑在本模組只是後備。它的設計與本模組相反：它先讓伺服器出現在列表，再把玩家轉送過去；這裡則是好友直接加入 BDS 本身。
+- [df-mc/go-xsapi](https://github.com/df-mc/go-xsapi)：RTA 斷線後重新連線，但不撤下 session。
+- [df-mc/go-nethernet](https://github.com/df-mc/go-nethernet)：中繼（TURN）憑證，以及好友加入時只用這些中繼（[gophertunnel](https://github.com/Sandertv/gophertunnel) 也是）。
+- [MCXboxBroadcast](https://github.com/MCXboxBroadcast/Broadcaster)：Xbox Live session 格式和 HTTP signaling 後備。它把玩家轉送到別的伺服器；這裡是好友直接加入 BDS。
 
 ## 授權
 
