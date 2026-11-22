@@ -70,6 +70,7 @@ The defaults work as they are. The file is `mods/xbox-live-on-bds/config/config.
 | Field | Default | Meaning |
 |---|---|---|
 | `visibility` | `"friendsOfFriends"` | Who can see the server. `"friendsOfFriends"`: friends, and friends of players on the server. `"friends"`: friends only |
+| `playerCount` | `"includeHost"` | The count in the Friends tab<br>`"includeHost"`: players + 1 for the host<br>`"playersOnly"`: players only (at least 1) |
 
 To limit who can join, use the server's allow list (`allow-list`).
 

@@ -70,6 +70,7 @@ Xbox Live session is up: ...
 | 字段 | 默认 | 说明 |
 |---|---|---|
 | `visibility` | `"friendsOfFriends"` | 谁看得到服务器。`"friendsOfFriends"`：好友，以及服务器内玩家的好友。`"friends"`：只有好友 |
+| `playerCount` | `"includeHost"` | 好友页的人数<br>`"includeHost"`：玩家数 + 1（主机）<br>`"playersOnly"`：只算玩家（至少 1） |
 
 要限制谁能进来，请用服务器的白名单（`allow-list`）。
 

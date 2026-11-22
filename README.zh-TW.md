@@ -70,6 +70,7 @@ Xbox Live session is up: ...
 | 欄位 | 預設 | 說明 |
 |---|---|---|
 | `visibility` | `"friendsOfFriends"` | 誰看得到伺服器。`"friendsOfFriends"`：好友，以及伺服器內玩家的好友。`"friends"`：只有好友 |
+| `playerCount` | `"includeHost"` | 好友分頁的人數<br>`"includeHost"`：玩家數 + 1（主機）<br>`"playersOnly"`：只算玩家（至少 1） |
 
 要限制誰能進來，請用伺服器的白名單（`allow-list`）。
 
