@@ -12,6 +12,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `/xbl ping` in Japanese and Korean.
 - `playerCount` in `config.json`: the Friends tab can show only the players on the server, instead of one more for the host.
 
+### Changed
+
+- The console messages of the mod are clearer. They tell what happened and what to do, without status codes. When Xbox Live refuses the host account, for example because it has no Xbox profile or is a child account, the console tells why and what to do.
+
+### Fixed
+
+- When a sign-in code expires before it is used, the console no longer shows errors. It tells that the code expired, and a new code follows.
+
 ## [0.2.2] - 2026-11-21
 
 ### Changed
