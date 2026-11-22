@@ -53,6 +53,8 @@ Xbox Live session is up: ...
 
 Later restarts do not ask you to sign in again.
 
+A code is good for about 15 minutes. After two unused codes, type `xbl login` in the server console for a new one.
+
 ## Let players join
 
 Add each player as a friend with the host account (the mod does not do this). The server then shows in their Friends tab.

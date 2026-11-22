@@ -11,9 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `/xbl ping` in Japanese and Korean.
 - `playerCount` in `config.json`: the Friends tab can show only the players on the server, instead of one more for the host.
+- `xbl login` in the server console gives a new sign-in code.
 
 ### Changed
 
+- When nobody signs in, the mod shows two sign-in codes and then waits for `xbl login` in the server console. Before, it showed a new code about every 20 minutes without end.
 - The console messages of the mod are clearer. They tell what happened and what to do, without status codes. When Xbox Live refuses the host account, for example because it has no Xbox profile or is a child account, the console tells why and what to do.
 
 ### Fixed
