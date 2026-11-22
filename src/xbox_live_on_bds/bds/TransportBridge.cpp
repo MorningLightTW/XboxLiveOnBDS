@@ -335,7 +335,10 @@ LL_TYPE_INSTANCE_HOOK(
                 "Friends joining through Xbox Live use only Microsoft's relay servers, like a world the game hosts"
             );
         } else if (xboxJoin && !relaysOnly) {
-            logger->warn("Xbox Live sent no relay servers for a friend's join; the join may not complete");
+            logger->warn(
+                "Xbox Live sent no relay servers for a friend's join; if the join does not complete, the friend can "
+                "try again"
+            );
             logger->debug("The join uses the ICE servers of the server");
             logger->debug("No relay servers for connection {}", util::Redactor::instance().id(connectionId));
         }
@@ -509,7 +512,9 @@ bool prime(std::uint16_t port) {
         reportMismatch();
     } else if (logger) {
         logger->warn(
-            "Could not check the server's NetherNet transport ({}); the first friend to join may not get in",
+            "Could not check the server's NetherNet transport ({}); if the first friend to join does not get in, that "
+            "friend "
+            "can try again",
             res.plainCause()
         );
         logger->debug("NetherNet transport check: {}", util::Redactor::instance().text(res.describe()));

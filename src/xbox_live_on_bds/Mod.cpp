@@ -117,7 +117,9 @@ void Mod::startSession() {
     if (mSession) return;
     auto info = bds::readServerLobbyInfo();
     if (!info) {
-        getSelf().getLogger().error("Server properties are not loaded; cannot start the Xbox Live session");
+        getSelf().getLogger().error(
+            "Server properties are not loaded; cannot start the Xbox Live session. Restart the server"
+        );
         return;
     }
     for (auto const& blocker : bds::findJoinBlockers()) getSelf().getLogger().warn("Friends' joins: {}", blocker);
@@ -161,7 +163,8 @@ bool Mod::enable() {
                     if (mSession) mSession->retryNow();
                     return "A new sign-in code follows";
                 case auth::XboxAuth::LoginRequest::AlreadySignedIn:
-                    return "The host account is already signed in. To change it, see the README";
+                    return "The host account is already signed in. To use another account, stop the server, delete "
+                           "mods/xbox-live-on-bds/data/auth.json and start the server again";
                 case auth::XboxAuth::LoginRequest::CodeShown:
                     return "A sign-in code is on the console now. Use that code";
                 }

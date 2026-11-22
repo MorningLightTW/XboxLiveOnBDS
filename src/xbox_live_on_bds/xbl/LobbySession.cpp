@@ -354,7 +354,7 @@ struct LobbySession::Impl {
             if (handle == Handle::Elsewhere) {
                 logger.info("The host account left the other world; showing this server in the Friends tab again");
             } else {
-                logger.warn("This server dropped out of the Friends tab; publishing it again");
+                logger.warn("This server dropped out of the Friends tab; showing it again");
             }
             if (putSession() && createHandle()) {
                 handle = Handle::Ours;

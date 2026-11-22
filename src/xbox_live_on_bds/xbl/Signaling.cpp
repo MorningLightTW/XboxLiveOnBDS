@@ -134,12 +134,12 @@ struct Signaling::Impl {
         if (lifetime > 0s) {
             logger.log(
                 level,
-                "Got {} TURN relay server(s) for friends behind NAT, valid for {} min",
+                "Xbox Live gave {} relay server(s) for friends' joins, valid for {} min",
                 servers.size(),
                 std::chrono::duration_cast<std::chrono::minutes>(lifetime).count()
             );
         } else {
-            logger.log(level, "Got {} TURN relay server(s) for friends behind NAT", servers.size());
+            logger.log(level, "Xbox Live gave {} relay server(s) for friends' joins", servers.size());
         }
         if (options.onTurnServers) options.onTurnServers(std::move(servers));
     }
@@ -178,7 +178,10 @@ struct Signaling::Impl {
         }
         auto standIn = ice::StandIn::open(ufrag, password);
         if (!standIn) {
-            logger.warn("Could not open a local UDP port for a friend's join; the join may not complete");
+            logger.warn(
+                "Could not open a local UDP port for a friend's join; if the join does not complete, the friend can "
+                "try again"
+            );
             return;
         }
         std::vector<std::string> addresses{"127.0.0.1"};

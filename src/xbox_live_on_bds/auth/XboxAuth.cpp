@@ -526,7 +526,9 @@ struct XboxAuth::Impl {
             title.notAfter                  = util::parseIsoTime(t.at("NotAfter").get<std::string>());
             xsts[std::string(relyingParty)] = parseXsts(j->at("AuthorizationToken"));
         } catch (json::exception const& e) {
-            logger.error("Xbox Live sign-in got an answer this mod does not understand");
+            logger.error(
+                "Xbox Live sign-in got an answer this mod does not understand; a newer release of this mod may fix this"
+            );
             logger.debug("SISU: {}", util::describeException(e));
             return -1;
         }
@@ -566,7 +568,9 @@ struct XboxAuth::Impl {
         try {
             xsts[std::string(relyingParty)] = parseXsts(*j);
         } catch (json::exception const& e) {
-            logger.error("Xbox Live sign-in got an answer this mod does not understand");
+            logger.error(
+                "Xbox Live sign-in got an answer this mod does not understand; a newer release of this mod may fix this"
+            );
             logger.debug("XSTS for {}: {}", relyingParty, util::describeException(e));
             return -1;
         }
@@ -633,7 +637,9 @@ struct XboxAuth::Impl {
         }
         std::string ticket = j->value("/data/SessionTicket"_json_pointer, std::string{});
         if (ticket.empty()) {
-            logger.error("Minecraft sign-in got an answer this mod does not understand");
+            logger.error(
+                "Minecraft sign-in got an answer this mod does not understand; a newer release of this mod may fix this"
+            );
             logger.debug("PlayFab login: no session ticket");
             return std::nullopt;
         }
@@ -687,7 +693,9 @@ struct XboxAuth::Impl {
             }
         }
         if (session.authorizationHeader.empty() || session.notAfter == 0) {
-            logger.error("Minecraft sign-in got an answer this mod does not understand");
+            logger.error(
+                "Minecraft sign-in got an answer this mod does not understand; a newer release of this mod may fix this"
+            );
             logger.debug("Minecraft session start: no authorization header or expiry");
             return std::nullopt;
         }
@@ -708,7 +716,9 @@ std::optional<XstsToken> XboxAuth::getXsts(std::string_view relyingParty, std::s
         return mImpl->getXsts(relyingParty, stop);
     } catch (std::exception const& e) {
         // Runs on a worker thread: an escaping exception would end the whole server.
-        mImpl->logger.error("Xbox Live sign-in got an answer this mod does not understand");
+        mImpl->logger.error(
+            "Xbox Live sign-in got an answer this mod does not understand; a newer release of this mod may fix this"
+        );
         mImpl->logger.debug("Sign-in: {}", util::describeException(e));
         return std::nullopt;
     }
@@ -719,7 +729,9 @@ std::optional<MinecraftSession> XboxAuth::getMinecraftSession(std::string_view g
     try {
         return mImpl->getMinecraftSession(gameVersion, stop);
     } catch (std::exception const& e) {
-        mImpl->logger.error("Xbox Live sign-in got an answer this mod does not understand");
+        mImpl->logger.error(
+            "Xbox Live sign-in got an answer this mod does not understand; a newer release of this mod may fix this"
+        );
         mImpl->logger.debug("Sign-in: {}", util::describeException(e));
         return std::nullopt;
     }
