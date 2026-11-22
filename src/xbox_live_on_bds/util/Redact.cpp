@@ -326,17 +326,15 @@ std::string Redactor::candidateFields(std::string_view prefix, std::string_view 
     out += "candidate:_ ";
     out += textImpl(tokens[1]) + ' ' + textImpl(tokens[2]) + ' ' + textImpl(tokens[3]) + ' ' + addressAlias(tokens[4])
          + ' ' + std::string(tokens[5]) + " typ " + textImpl(tokens[7]);
-    for (std::size_t i = 8; i < tokens.size(); ++i) {
-        out += ' ';
-        if (tokens[i] == "raddr" && i + 1 < tokens.size()) {
-            out += "raddr " + addressAlias(tokens[i + 1]);
-            ++i;
-        } else if (tokens[i] == "ufrag" && i + 1 < tokens.size()) {
-            out += "ufrag " + charsMark(tokens[i + 1].size());
-            ++i;
-        } else {
-            out += textImpl(tokens[i]);
-        }
+    // Pairs ("raddr <address>", "ufrag <value>") take two tokens, other fields one.
+    std::size_t i = 8;
+    while (i < tokens.size()) {
+        out       += ' ';
+        bool pair  = i + 1 < tokens.size() && (tokens[i] == "raddr" || tokens[i] == "ufrag");
+        if (!pair) out += textImpl(tokens[i]);
+        else if (tokens[i] == "raddr") out += "raddr " + addressAlias(tokens[i + 1]);
+        else out += "ufrag " + charsMark(tokens[i + 1].size());
+        i += pair ? 2 : 1;
     }
     return out;
 }
