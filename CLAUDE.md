@@ -50,7 +50,8 @@ xmake build <stun-test|udp-ports-test|signal-text-test|device-auth-test> && xmak
 
 These rules apply to info, warn and error lines. They follow the [Windows error message guidelines](https://learn.microsoft.com/en-us/windows/win32/debug/error-message-guidelines).
 
-- Tell what occurred, what the mod does next, and what the owner must do, if anything. Example: `Could not read config/config.json (...); using the defaults`.
+- Start with the topic and a colon, so that the owner can find the line: `Sign-in:`, `Friends tab:`, `Friends' joins:`, `Xbox Live:`, `config.json:`, `LeviLamina version:`, `Translations:`. Use one of these. Add a topic only when none fits.
+- Tell what occurred, what the mod does next, and what the owner must do, if anything. Example: `config.json: could not read it (...); using the defaults`.
 - Use error only when a feature stops and the mod cannot recover alone. Use warn when the mod tries again, uses a default or waits for the owner. An expected event is not an error. Examples: a sign-in code expires, or a retry occurs.
 - Write a different message for each known cause. Give the cause in plain words, not only an HTTP status.
 - Log a cause one time. A failure that comes from a failure already logged goes to debug, or the mod does not log it.
