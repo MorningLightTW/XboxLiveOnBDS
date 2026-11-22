@@ -141,7 +141,8 @@ void reportMismatch() {
     layoutState.store(Layout::Mismatch);
     if (!reportedMismatch.exchange(true) && logger) {
         logger->error(
-            "This build of XboxLiveOnBDS does not match the NetherNet internals of this server (LeviLamina {}; it is "
+            "LeviLamina version: this build of XboxLiveOnBDS does not match the NetherNet internals of this server "
+            "(LeviLamina {}; it is "
             "built for LeviLamina {}), so friends cannot join through Xbox Live and the server is not shown in the "
             "Friends tab. Use the mod release made for your LeviLamina version.",
             runningLeviLaminaVersion(),
@@ -332,11 +333,12 @@ LL_TYPE_INSTANCE_HOOK(
     if (logger) {
         if (relaysOnly && !reportedRelaysOnly.exchange(true)) {
             logger->info(
-                "Friends joining through Xbox Live use only Microsoft's relay servers, like a world the game hosts"
+                "Friends' joins: through Xbox Live, friends use only Microsoft's relay servers, like a world the game "
+                "hosts"
             );
         } else if (xboxJoin && !relaysOnly) {
             logger->warn(
-                "Xbox Live sent no relay servers for a friend's join; if the join does not complete, the friend can "
+                "Friends' joins: Xbox Live sent no relay servers for a join; if it does not complete, the friend can "
                 "try again"
             );
             logger->debug("The join uses the ICE servers of the server");
@@ -372,7 +374,7 @@ std::size_t dropStaleHeld(std::chrono::steady_clock::time_point now) {
 void reportDropped(std::size_t joins) {
     if (joins > 0 && logger) {
         logger->warn(
-            "{} friend join(s) gave up: Xbox Live sent no relay servers within {} s",
+            "Friends' joins: {} gave up: Xbox Live sent no relay servers within {} s",
             joins,
             std::chrono::duration_cast<std::chrono::seconds>(HoldLimit).count()
         );
@@ -467,7 +469,8 @@ bool prime(std::uint16_t port) {
     if (!hooksInstalled.load()) {
         if (!reportedMissingHooks.exchange(true) && logger) {
             logger->error(
-                "LeviLamina {} lacks NetherNet functions this mod needs (it is built for LeviLamina {}), so friends "
+                "LeviLamina version: LeviLamina {} lacks NetherNet functions this mod needs (it is built for "
+                "LeviLamina {}), so friends "
                 "cannot join and the server is not shown in the Friends tab. Use the mod release made for your "
                 "LeviLamina version.",
                 runningLeviLaminaVersion(),
@@ -512,7 +515,8 @@ bool prime(std::uint16_t port) {
         reportMismatch();
     } else if (logger) {
         logger->warn(
-            "Could not check the server's NetherNet transport ({}); if the first friend to join does not get in, that "
+            "Friends' joins: could not check the server's NetherNet transport ({}); if the first friend to join does "
+            "not get in, that "
             "friend "
             "can try again",
             res.plainCause()

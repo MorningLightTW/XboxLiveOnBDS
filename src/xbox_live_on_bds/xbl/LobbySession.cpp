@@ -199,7 +199,7 @@ struct LobbySession::Impl {
         auto res =
             net::request("PUT", sessionUrl(sessionId), headers(MpsdContract), sessionBody(snapshot, connection).dump());
         if (!res.ok()) {
-            net::logFailure(logger, "Could not show this server in the Friends tab", res, "Session publish");
+            net::logFailure(logger, "Friends tab: could not show this server", res, "Session publish");
             return false;
         }
         return true;
@@ -213,7 +213,7 @@ struct LobbySession::Impl {
         };
         auto res = net::request("POST", HandlesUrl, headers(MpsdContract), body.dump());
         if (!res.ok()) {
-            net::logFailure(logger, "Could not show this server in the Friends tab", res, "Activity handle");
+            net::logFailure(logger, "Friends tab: could not show this server", res, "Activity handle");
             return false;
         }
         return true;
@@ -227,7 +227,7 @@ struct LobbySession::Impl {
             R"({"state":"active"})"
         );
         if (!res.ok()) {
-            logger.warn("Could not update the online status of the host account ({})", res.plainCause());
+            logger.warn("Friends tab: could not update the online status of the host account ({})", res.plainCause());
             logger.debug("Presence update: {}", util::Redactor::instance().text(res.describe()));
         }
     }
@@ -239,10 +239,7 @@ struct LobbySession::Impl {
         auto res = net::request("GET", sessionUrl(sessionId), headers(MpsdContract));
         auto j   = json::parse(res.body, nullptr, false);
         if (!res.ok() || !j.is_object()) {
-            logger.warn(
-                "Could not read the players who join through the Friends tab ({}); trying again",
-                res.plainCause()
-            );
+            logger.warn("Friends' joins: could not read the players who join ({}); trying again", res.plainCause());
             logger.debug("Session members: {}", util::Redactor::instance().text(res.describe()));
             return Nonces::Failed;
         }
@@ -253,9 +250,7 @@ struct LobbySession::Impl {
                 if (!xuid.empty() && xuid != token.xuid) joiners.insert(xuid);
             }
         } catch (json::exception const&) {
-            logger.warn(
-                "Could not read the players who join through the Friends tab (unexpected answer); trying again"
-            );
+            logger.warn("Friends' joins: could not read the players who join (unexpected answer); trying again");
             logger.debug("Session members: {}", util::Redactor::instance().text(res.describe()));
             return Nonces::Failed;
         }
@@ -333,7 +328,8 @@ struct LobbySession::Impl {
         if (handle == Handle::Elsewhere) return;
         handle = Handle::Elsewhere;
         logger.warn(
-            "The host account is in another world on another device; friends will not see this server until it "
+            "Friends tab: the host account is in another world on another device; friends do not see this server until "
+            "it "
             "leaves that world"
         );
     }
@@ -352,9 +348,9 @@ struct LobbySession::Impl {
             return false;
         case Handle::Gone:
             if (handle == Handle::Elsewhere) {
-                logger.info("The host account left the other world; showing this server in the Friends tab again");
+                logger.info("Friends tab: the host account left the other world; showing this server again");
             } else {
-                logger.warn("This server dropped out of the Friends tab; showing it again");
+                logger.warn("Friends tab: this server dropped out; showing it again");
             }
             if (putSession() && createHandle()) {
                 handle = Handle::Ours;
@@ -508,7 +504,7 @@ struct LobbySession::Impl {
     void reconnect(Reconnect& state, std::string_view service, Attempt&& attempt) {
         std::string error;
         if (attempt(error)) {
-            if (state.failures > 0) logger.info("Reconnected to {}", service);
+            if (state.failures > 0) logger.info("{}: reconnected", service);
             else logger.debug("Reconnected to {}", service);
             state = {};
             return;
@@ -521,7 +517,7 @@ struct LobbySession::Impl {
             state.awaitingLogin = true;
             return;
         }
-        logger.warn("Could not reconnect to {}; trying again in {} s", service, state.delay.count());
+        logger.warn("{}: could not reconnect; trying again in {} s", service, state.delay.count());
         state.at    = Clock::now() + state.delay;
         state.delay = std::min<std::chrono::seconds>(state.delay * 2, MaxRetryDelay);
     }
@@ -544,14 +540,14 @@ struct LobbySession::Impl {
         if (!connectSignaling(stop, false, error)) {
             if (!stop.stop_requested() && !error.empty()) {
                 logger.debug("Signaling connect: {}", util::Redactor::instance().text(error));
-                logger.warn("Could not connect to the Minecraft service for friends' joins");
+                logger.warn("Friends' joins: could not connect to the Minecraft service");
             }
             return false;
         }
         if (!connectRta(stop, error)) {
             if (!stop.stop_requested() && !error.empty()) {
                 logger.debug("RTA connect: {}", util::Redactor::instance().text(error));
-                logger.warn("Could not connect to Xbox Live");
+                logger.warn("Xbox Live: could not connect");
             }
             return false;
         }
@@ -587,7 +583,7 @@ struct LobbySession::Impl {
                 retryDelay     = FirstRetryDelay;
                 continue;
             }
-            logger.warn("Trying the Xbox Live session again in {} s", retryDelay.count());
+            logger.warn("Xbox Live: trying again in {} s", retryDelay.count());
             std::unique_lock lock(mutex);
             wake.wait_for(lock, stop, retryDelay, [this] { return retryRequested; });
             retryRequested = false;
@@ -606,13 +602,15 @@ struct LobbySession::Impl {
             return;
         } catch (std::exception const& e) {
             logger.error(
-                "The Xbox Live session stopped after an unexpected error; restart the server to show it in the "
+                "Friends tab: the Xbox Live session stopped after an unexpected error; restart the server to show it "
+                "in the "
                 "Friends tab again"
             );
             logger.debug("Session error: {}", util::Redactor::instance().text(util::describeException(e)));
         } catch (...) {
             logger.error(
-                "The Xbox Live session stopped after an unexpected error; restart the server to show it in the "
+                "Friends tab: the Xbox Live session stopped after an unexpected error; restart the server to show it "
+                "in the "
                 "Friends tab again"
             );
         }
@@ -687,7 +685,7 @@ struct LobbySession::Impl {
                 }
             }
             if (signalingReconnect.at && Clock::now() >= *signalingReconnect.at) {
-                reconnect(signalingReconnect, "the Minecraft service for friends' joins", [&](std::string& error) {
+                reconnect(signalingReconnect, "Friends' joins", [&](std::string& error) {
                     return connectSignaling(stop, true, error);
                 });
             }

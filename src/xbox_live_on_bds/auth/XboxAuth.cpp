@@ -171,7 +171,7 @@ struct XboxAuth::Impl {
         if (!in) return;
         auto j = json::parse(in, nullptr, false);
         if (j.is_discarded() || j.value("version", 0) != CacheVersion) {
-            logger.warn("Could not read the saved sign-in in data/auth.json; a new sign-in is necessary");
+            logger.warn("Sign-in: could not read the saved sign-in in data/auth.json; a new sign-in is necessary");
             return;
         }
         try {
@@ -196,7 +196,7 @@ struct XboxAuth::Impl {
             minecraft = {mc.value("authorization", ""), mc.value("pmid", ""), mc.value("notAfter", std::int64_t{0})};
             signedIn  = !msaRefresh.empty();
         } catch (json::exception const& e) {
-            logger.warn("Could not read the saved sign-in in data/auth.json; a new sign-in is necessary");
+            logger.warn("Sign-in: could not read the saved sign-in in data/auth.json; a new sign-in is necessary");
             logger.debug("data/auth.json: {}", util::describeException(e));
             *this = Impl::Empty{};
         }
@@ -248,14 +248,14 @@ struct XboxAuth::Impl {
             std::ofstream out(tmp, std::ios::binary | std::ios::trunc);
             out << j.dump(2);
             if (!out) {
-                logger.error("Could not save the sign-in to data/auth.json; the next start may ask for a new sign-in");
+                logger.error("Sign-in: could not save it to data/auth.json; the next start may ask for a new sign-in");
                 return;
             }
         }
         std::filesystem::rename(tmp, cacheFile, ec);
         if (ec) {
             logger.error(
-                "Could not save the sign-in to data/auth.json ({}); the next start may ask for a new sign-in",
+                "Sign-in: could not save it to data/auth.json ({}); the next start may ask for a new sign-in",
                 ec.message()
             );
         }
@@ -296,12 +296,15 @@ struct XboxAuth::Impl {
                     && j->is_object() && j->contains("error");
         logger.debug("Microsoft sign-in refresh: {}", util::Redactor::instance().text(res.describe()));
         if (!refused) {
-            logger.warn("Could not reach Microsoft to refresh the sign-in ({}); trying again later", res.plainCause());
+            logger.warn(
+                "Sign-in: could not reach Microsoft to refresh the saved sign-in ({}); trying again later",
+                res.plainCause()
+            );
             return Refresh::Unreachable;
         }
         // Usually "invalid_grant": the account was not used for a long time, its password changed, or its owner
         // removed the access.
-        logger.warn("Microsoft no longer accepts the saved sign-in; a new sign-in is necessary");
+        logger.warn("Sign-in: Microsoft no longer accepts the saved sign-in; a new sign-in is necessary");
         msaRefresh.clear();
         signedIn = false;
         return Refresh::Rejected;
@@ -322,7 +325,7 @@ struct XboxAuth::Impl {
         );
         auto code = parseJson(res.body);
         if (!res.ok() || !code) {
-            net::logFailure(logger, "Could not start the Microsoft account sign-in", res);
+            net::logFailure(logger, "Sign-in: could not start the Microsoft account sign-in", res);
             return false;
         }
         auto deviceCode = code->at("device_code").get<std::string>();
@@ -356,7 +359,7 @@ struct XboxAuth::Impl {
             );
             auto j = parseJson(poll.body);
             if (poll.ok() && j) {
-                logger.info("Microsoft account signed in");
+                logger.info("Sign-in: Microsoft account signed in");
                 codesLeft   = AutoSignInCodes;
                 toldToLogin = false;
                 return storeMsa(*j);
@@ -380,13 +383,13 @@ struct XboxAuth::Impl {
             if (error == "expired_token") break;
             logger.debug("Microsoft sign-in poll: {}", util::Redactor::instance().text(poll.describe()));
             if (error == "authorization_declined") {
-                logger.warn("The Microsoft account sign-in was declined{}", afterUnusedCode());
+                logger.warn("Sign-in: the Microsoft account sign-in was declined{}", afterUnusedCode());
                 return false;
             }
-            logger.error("Microsoft account sign-in failed ({}){}", error, afterUnusedCode());
+            logger.error("Sign-in: the Microsoft account sign-in failed ({}){}", error, afterUnusedCode());
             return false;
         }
-        logger.warn("The sign-in code expired before it was used{}", afterUnusedCode());
+        logger.warn("Sign-in: the code expired before it was used{}", afterUnusedCode());
         return false;
     }
 
@@ -411,7 +414,7 @@ struct XboxAuth::Impl {
         }
         if (codesLeft.load() <= 0) {
             if (!toldToLogin.exchange(true)) {
-                logger.warn("Not signed in. For a sign-in code, type \"xbl login\" in the server console");
+                logger.warn("Sign-in: not signed in. For a sign-in code, type \"xbl login\" in the server console");
             }
             return false;
         }
@@ -434,7 +437,7 @@ struct XboxAuth::Impl {
         if (res.status != 401) return false;
         auto why = accountProblem(j);
         if (why.empty()) return false;
-        logger.error("Xbox Live does not accept the host account: {}. The mod tries again by itself", why);
+        logger.error("Sign-in: Xbox Live does not accept the host account: {}. The mod tries again by itself", why);
         logger.debug("Xbox Live refusal: {}", util::Redactor::instance().text(res.describe()));
         return true;
     }
@@ -443,7 +446,7 @@ struct XboxAuth::Impl {
         if (!deviceKey) {
             deviceKey = EcKey::generate();
             if (!deviceKey) {
-                logger.error("Could not make the sign-in key of this computer");
+                logger.error("Sign-in: could not make the sign-in key of this computer");
                 logger.debug("EcKey::generate (CNG ECDSA P-256) failed");
                 return false;
             }
@@ -474,7 +477,7 @@ struct XboxAuth::Impl {
         );
         auto j = parseJson(res.body);
         if (!res.ok() || !j) {
-            net::logFailure(logger, "Xbox Live sign-in failed", res, "Device authentication");
+            net::logFailure(logger, "Sign-in: could not sign in to Xbox Live", res, "Device authentication");
             return false;
         }
         device.value    = j->at("Token").get<std::string>();
@@ -513,7 +516,7 @@ struct XboxAuth::Impl {
                 logger.debug("SISU: {}", util::Redactor::instance().text(res.describe()));
                 return res.status;
             }
-            net::logFailure(logger, "Xbox Live sign-in failed", res, "SISU");
+            net::logFailure(logger, "Sign-in: could not sign in to Xbox Live", res, "SISU");
             return res.status == 0 ? -1 : res.status;
         }
         try {
@@ -527,7 +530,8 @@ struct XboxAuth::Impl {
             xsts[std::string(relyingParty)] = parseXsts(j->at("AuthorizationToken"));
         } catch (json::exception const& e) {
             logger.error(
-                "Xbox Live sign-in got an answer this mod does not understand; a newer release of this mod may fix this"
+                "Sign-in: Xbox Live sent an answer this mod does not understand; a newer release of this mod may fix "
+                "this"
             );
             logger.debug("SISU: {}", util::describeException(e));
             return -1;
@@ -561,7 +565,12 @@ struct XboxAuth::Impl {
             if (refusesAccount(res, j)) return AccountRefused;
             // Another 401: the user or title token is stale, and getXsts() gets new ones through SISU, which logs.
             if (res.status != 401) {
-                net::logFailure(logger, "Xbox Live sign-in failed", res, fmt::format("XSTS for {}", relyingParty));
+                net::logFailure(
+                    logger,
+                    "Sign-in: could not sign in to Xbox Live",
+                    res,
+                    fmt::format("XSTS for {}", relyingParty)
+                );
             }
             return res.status == 0 ? -1 : res.status;
         }
@@ -569,7 +578,8 @@ struct XboxAuth::Impl {
             xsts[std::string(relyingParty)] = parseXsts(*j);
         } catch (json::exception const& e) {
             logger.error(
-                "Xbox Live sign-in got an answer this mod does not understand; a newer release of this mod may fix this"
+                "Sign-in: Xbox Live sent an answer this mod does not understand; a newer release of this mod may fix "
+                "this"
             );
             logger.debug("XSTS for {}: {}", relyingParty, util::describeException(e));
             return -1;
@@ -603,7 +613,7 @@ struct XboxAuth::Impl {
             if (status != 401 && status != 400) return std::nullopt;
             msa = {}; // The Microsoft account token was refused: refresh it once and retry.
         }
-        logger.error("Xbox Live sign-in failed (access refused)");
+        logger.error("Sign-in: could not sign in to Xbox Live (access refused)");
         return std::nullopt;
     }
 
@@ -632,13 +642,14 @@ struct XboxAuth::Impl {
         );
         auto j = parseJson(res.body);
         if (!res.ok() || !j) {
-            net::logFailure(logger, "Minecraft sign-in failed", res, "PlayFab login");
+            net::logFailure(logger, "Sign-in: could not sign in to Minecraft", res, "PlayFab login");
             return std::nullopt;
         }
         std::string ticket = j->value("/data/SessionTicket"_json_pointer, std::string{});
         if (ticket.empty()) {
             logger.error(
-                "Minecraft sign-in got an answer this mod does not understand; a newer release of this mod may fix this"
+                "Sign-in: Minecraft sent an answer this mod does not understand; a newer release of this mod may fix "
+                "this"
             );
             logger.debug("PlayFab login: no session ticket");
             return std::nullopt;
@@ -674,7 +685,7 @@ struct XboxAuth::Impl {
         );
         j = parseJson(res.body);
         if (!res.ok() || !j) {
-            net::logFailure(logger, "Minecraft sign-in failed", res, "Minecraft session start");
+            net::logFailure(logger, "Sign-in: could not sign in to Minecraft", res, "Minecraft session start");
             return std::nullopt;
         }
         MinecraftSession session;
@@ -694,7 +705,8 @@ struct XboxAuth::Impl {
         }
         if (session.authorizationHeader.empty() || session.notAfter == 0) {
             logger.error(
-                "Minecraft sign-in got an answer this mod does not understand; a newer release of this mod may fix this"
+                "Sign-in: Minecraft sent an answer this mod does not understand; a newer release of this mod may fix "
+                "this"
             );
             logger.debug("Minecraft session start: no authorization header or expiry");
             return std::nullopt;
@@ -717,7 +729,7 @@ std::optional<XstsToken> XboxAuth::getXsts(std::string_view relyingParty, std::s
     } catch (std::exception const& e) {
         // Runs on a worker thread: an escaping exception would end the whole server.
         mImpl->logger.error(
-            "Xbox Live sign-in got an answer this mod does not understand; a newer release of this mod may fix this"
+            "Sign-in: Xbox Live sent an answer this mod does not understand; a newer release of this mod may fix this"
         );
         mImpl->logger.debug("Sign-in: {}", util::describeException(e));
         return std::nullopt;
@@ -730,7 +742,7 @@ std::optional<MinecraftSession> XboxAuth::getMinecraftSession(std::string_view g
         return mImpl->getMinecraftSession(gameVersion, stop);
     } catch (std::exception const& e) {
         mImpl->logger.error(
-            "Xbox Live sign-in got an answer this mod does not understand; a newer release of this mod may fix this"
+            "Sign-in: Xbox Live sent an answer this mod does not understand; a newer release of this mod may fix this"
         );
         mImpl->logger.debug("Sign-in: {}", util::describeException(e));
         return std::nullopt;

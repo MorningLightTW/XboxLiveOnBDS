@@ -45,7 +45,7 @@ void Mod::loadConfig() {
         if (!ll::config::loadConfig(config, path)) ll::config::saveConfig(config, path);
     } catch (std::exception const& e) {
         // Leave a broken file as it is for its owner to fix, rather than overwrite it.
-        logger.warn("Could not read config/config.json ({}); using the defaults", util::describeException(e));
+        logger.warn("config.json: could not read it ({}); using the defaults", util::describeException(e));
         config = {};
     }
     mVisibility = config.visibility == "friends" ? xbl::Visibility::Friends : xbl::Visibility::FriendsOfFriends;
@@ -69,7 +69,7 @@ bool Mod::load() {
     loadConfig();
     // Without them everything is in English, so a missing lang folder only warns.
     if (auto loaded = ll::i18n::getInstance().load(getSelf().getLangDir()); !loaded) {
-        getSelf().getLogger().warn("Could not load the lang folder of this mod; using English");
+        getSelf().getLogger().warn("Translations: could not load the lang folder of this mod; using English");
         // The error names files by their full path, which holds the user's folder names.
         auto message = loaded.error().message();
         for (auto const& dir : {getSelf().getLangDir().string(), getSelf().getLangDir().generic_string()}) {
@@ -118,7 +118,7 @@ void Mod::startSession() {
     auto info = bds::readServerLobbyInfo();
     if (!info) {
         getSelf().getLogger().error(
-            "Server properties are not loaded; cannot start the Xbox Live session. Restart the server"
+            "Friends tab: server properties are not loaded; cannot start the Xbox Live session. Restart the server"
         );
         return;
     }

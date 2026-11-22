@@ -134,12 +134,12 @@ struct Signaling::Impl {
         if (lifetime > 0s) {
             logger.log(
                 level,
-                "Xbox Live gave {} relay server(s) for friends' joins, valid for {} min",
+                "Friends' joins: Xbox Live gave {} relay server(s), valid for {} min",
                 servers.size(),
                 std::chrono::duration_cast<std::chrono::minutes>(lifetime).count()
             );
         } else {
-            logger.log(level, "Xbox Live gave {} relay server(s) for friends' joins", servers.size());
+            logger.log(level, "Friends' joins: Xbox Live gave {} relay server(s)", servers.size());
         }
         if (options.onTurnServers) options.onTurnServers(std::move(servers));
     }
@@ -179,7 +179,7 @@ struct Signaling::Impl {
         auto standIn = ice::StandIn::open(ufrag, password);
         if (!standIn) {
             logger.warn(
-                "Could not open a local UDP port for a friend's join; if the join does not complete, the friend can "
+                "Friends' joins: could not open a local UDP port for a join; if it does not complete, the friend can "
                 "try again"
             );
             return;
@@ -269,7 +269,7 @@ struct Signaling::Impl {
                 if (signal.starts_with(ConnectResponse)) logger.debug("The server answered a friend's join");
                 else if (signal.starts_with(ConnectError)) {
                     auto const code = signal.substr(signal.find_last_of(' ') + 1);
-                    logger.warn("The server refused a friend's join");
+                    logger.warn("Friends' joins: the server refused a join");
                     logger.debug("Refused join: NetherNet error {}", code);
                     logger.debug("Refused join: {}", util::Redactor::instance().signal(signal));
                 }
@@ -458,7 +458,7 @@ struct Signaling::Impl {
         auto j = json::parse(text, nullptr, false);
         if (!j.is_object()) return;
         if (j.contains("error") && !j["error"].is_null()) {
-            logger.warn("The Minecraft service for friends' joins reported an error");
+            logger.warn("Friends' joins: the Minecraft service reported an error");
             logger.debug("Signaling service error: {}", util::Redactor::instance().text(j["error"].dump()));
             return;
         }
@@ -604,7 +604,7 @@ struct Signaling::Impl {
         if (!res.ok() || res.body.empty()) {
             int code = res.error.empty() ? ErrorConnectRequest : ErrorServerNotFound;
             logger.warn(
-                "The server did not accept a friend's join ({}, after {} ms)",
+                "Friends' joins: the server did not accept a join ({}, after {} ms)",
                 res.plainCause(),
                 std::chrono::duration_cast<std::chrono::milliseconds>(Clock::now() - started).count()
             );
@@ -615,7 +615,7 @@ struct Signaling::Impl {
         }
         sendSignal(offer.sender, fmt::format("{} {} {}", ConnectResponse, connectionId, res.body));
         logger.info(
-            "Relayed a friend's join to the server in {} ms ({} trickled candidate(s))",
+            "Friends' joins: relayed a join to the server in {} ms ({} trickled candidate(s))",
             std::chrono::duration_cast<std::chrono::milliseconds>(Clock::now() - started).count(),
             offer.candidates.size()
         );
