@@ -57,6 +57,15 @@ std::string HttpResponse::describeStatus() const {
     return fmt::format("HTTP {}, {} bytes", status, body.size());
 }
 
+std::string HttpResponse::plainCause() const {
+    if (!error.empty()) return "network error";
+    if (status == 429) return "too many requests";
+    if (status >= 500) return "the service is down";
+    if (status == 401 || status == 403) return "access refused";
+    if (status >= 400) return "request refused";
+    return "unexpected answer";
+}
+
 HttpResponse request(std::string_view method, std::string_view url, Headers const& headers, std::string_view body) {
     HttpResponse res;
     HINTERNET    s = session();

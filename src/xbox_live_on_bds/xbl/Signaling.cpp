@@ -178,7 +178,7 @@ struct Signaling::Impl {
         }
         auto standIn = ice::StandIn::open(ufrag, password);
         if (!standIn) {
-            logger.warn("Could not open a local stand-in for a friend's join");
+            logger.warn("Could not open a local UDP port for a friend's join; the join may not complete");
             return;
         }
         std::vector<std::string> addresses{"127.0.0.1"};
@@ -266,7 +266,8 @@ struct Signaling::Impl {
                 if (signal.starts_with(ConnectResponse)) logger.debug("The server answered a friend's join");
                 else if (signal.starts_with(ConnectError)) {
                     auto const code = signal.substr(signal.find_last_of(' ') + 1);
-                    logger.warn("The server refused a friend's join (error {})", code);
+                    logger.warn("The server refused a friend's join");
+                    logger.debug("Refused join: NetherNet error {}", code);
                     logger.debug("Refused join: {}", util::Redactor::instance().signal(signal));
                 }
                 sendSignal(player, signal);
@@ -454,7 +455,7 @@ struct Signaling::Impl {
         auto j = json::parse(text, nullptr, false);
         if (!j.is_object()) return;
         if (j.contains("error") && !j["error"].is_null()) {
-            logger.warn("The signaling service reported an error");
+            logger.warn("The Minecraft service for friends' joins reported an error");
             logger.debug("Signaling service error: {}", util::Redactor::instance().text(j["error"].dump()));
             return;
         }
@@ -576,8 +577,8 @@ struct Signaling::Impl {
                 {"Accept", "application/json"}
         }
         );
+        // Only for the debug log: the join below tells the owner whether it worked.
         if (!probe.ok()) {
-            logger.warn("BDS's NetherNet status check failed: {}", probe.describeStatus());
             logger.debug("NetherNet status check: {}", util::Redactor::instance().text(probe.describe()));
         }
         auto res = net::request(
@@ -599,10 +600,10 @@ struct Signaling::Impl {
         );
         if (!res.ok() || res.body.empty()) {
             int code = res.error.empty() ? ErrorConnectRequest : ErrorServerNotFound;
-            logger.error(
-                "BDS refused a friend's join after {} ms: {}",
-                std::chrono::duration_cast<std::chrono::milliseconds>(Clock::now() - started).count(),
-                res.describeStatus()
+            logger.warn(
+                "The server did not accept a friend's join ({}, after {} ms)",
+                res.plainCause(),
+                std::chrono::duration_cast<std::chrono::milliseconds>(Clock::now() - started).count()
             );
             logger.debug("BDS join refusal: {}", util::Redactor::instance().text(res.describe()));
             logger.debug("BDS refused the join of connection {}", util::Redactor::instance().id(connectionId));

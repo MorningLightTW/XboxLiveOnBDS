@@ -22,6 +22,7 @@
 
 #include "xbox_live_on_bds/auth/XboxAuth.h"
 #include "xbox_live_on_bds/net/Http.h"
+#include "xbox_live_on_bds/net/HttpLog.h"
 #include "xbox_live_on_bds/util/Encoding.h"
 #include "xbox_live_on_bds/util/Errors.h"
 #include "xbox_live_on_bds/util/Redact.h"
@@ -197,8 +198,7 @@ struct LobbySession::Impl {
         auto res =
             net::request("PUT", sessionUrl(sessionId), headers(MpsdContract), sessionBody(snapshot, connection).dump());
         if (!res.ok()) {
-            logger.error("Could not publish the Xbox Live session: {}", res.describeStatus());
-            logger.debug("Session publish: {}", util::Redactor::instance().text(res.describe()));
+            net::logFailure(logger, "Could not show this server in the Friends tab", res, "Session publish");
             return false;
         }
         return true;
@@ -212,8 +212,7 @@ struct LobbySession::Impl {
         };
         auto res = net::request("POST", HandlesUrl, headers(MpsdContract), body.dump());
         if (!res.ok()) {
-            logger.error("Could not create the Xbox Live activity handle: {}", res.describeStatus());
-            logger.debug("Activity handle: {}", util::Redactor::instance().text(res.describe()));
+            net::logFailure(logger, "Could not show this server in the Friends tab", res, "Activity handle");
             return false;
         }
         return true;
@@ -227,7 +226,7 @@ struct LobbySession::Impl {
             R"({"state":"active"})"
         );
         if (!res.ok()) {
-            logger.warn("Could not update the host account's presence: {}", res.describeStatus());
+            logger.warn("Could not update the online status of the host account ({})", res.plainCause());
             logger.debug("Presence update: {}", util::Redactor::instance().text(res.describe()));
         }
     }
@@ -239,7 +238,10 @@ struct LobbySession::Impl {
         auto res = net::request("GET", sessionUrl(sessionId), headers(MpsdContract));
         auto j   = json::parse(res.body, nullptr, false);
         if (!res.ok() || !j.is_object()) {
-            logger.warn("Could not read the Xbox Live session members: {}", res.describeStatus());
+            logger.warn(
+                "Could not read the players who join through the Friends tab ({}); trying again",
+                res.plainCause()
+            );
             logger.debug("Session members: {}", util::Redactor::instance().text(res.describe()));
             return Nonces::Failed;
         }
@@ -250,7 +252,9 @@ struct LobbySession::Impl {
                 if (!xuid.empty() && xuid != token.xuid) joiners.insert(xuid);
             }
         } catch (json::exception const&) {
-            logger.warn("Could not read the Xbox Live session members: {}", res.describeStatus());
+            logger.warn(
+                "Could not read the players who join through the Friends tab (unexpected answer); trying again"
+            );
             logger.debug("Session members: {}", util::Redactor::instance().text(res.describe()));
             return Nonces::Failed;
         }
@@ -398,10 +402,7 @@ struct LobbySession::Impl {
             gameVersion = info.version;
         }
         auto mc = auth.getMinecraftSession(gameVersion, stop);
-        if (!mc) {
-            error = "no Minecraft services token";
-            return false;
-        }
+        if (!mc) return false; // The sign-in has logged why; `error` stays empty.
         Signaling::Options options;
         {
             std::lock_guard lock(mutex);
@@ -433,10 +434,7 @@ struct LobbySession::Impl {
         dropRta();
         // Tokens last about 16 h; refresh before they lapse (getXsts returns the cached one otherwise).
         auto xsts = auth.getXsts(auth::XboxLiveRelyingParty, stop);
-        if (!xsts) {
-            error = "no Xbox Live token";
-            return false;
-        }
+        if (!xsts) return false; // The sign-in has logged why; `error` stays empty.
         token = *xsts;
         util::Redactor::instance().addPlayer(token.gamertag);
         util::Redactor::instance().addPlayer(token.xuid);
@@ -474,7 +472,7 @@ struct LobbySession::Impl {
                  && !connectionId.empty();
         }
         if (!gotId) {
-            error = "Xbox Live RTA did not give a connection id";
+            error = "RTA gave no connection id";
             dropRta();
             return false;
         }
@@ -514,12 +512,8 @@ struct LobbySession::Impl {
             return;
         }
         ++state.failures;
-        logger.warn(
-            "Could not reconnect to {}{}; retrying in {} s",
-            service,
-            error.empty() ? std::string{} : fmt::format(" ({})", error),
-            state.delay.count()
-        );
+        if (!error.empty()) logger.debug("Reconnect to {}: {}", service, util::Redactor::instance().text(error));
+        logger.warn("Could not reconnect to {}; trying again in {} s", service, state.delay.count());
         state.at    = Clock::now() + state.delay;
         state.delay = std::min<std::chrono::seconds>(state.delay * 2, MaxRetryDelay);
     }
@@ -540,11 +534,17 @@ struct LobbySession::Impl {
         }
         std::string error;
         if (!connectSignaling(stop, false, error)) {
-            if (!stop.stop_requested()) logger.error("Could not connect to the Minecraft signaling service: {}", error);
+            if (!stop.stop_requested() && !error.empty()) {
+                logger.debug("Signaling connect: {}", util::Redactor::instance().text(error));
+                logger.warn("Could not connect to the Minecraft service for friends' joins");
+            }
             return false;
         }
         if (!connectRta(stop, error)) {
-            if (!stop.stop_requested()) logger.error("Could not connect to Xbox Live RTA: {}", error);
+            if (!stop.stop_requested() && !error.empty()) {
+                logger.debug("RTA connect: {}", util::Redactor::instance().text(error));
+                logger.warn("Could not connect to Xbox Live");
+            }
             return false;
         }
         if (!publish(true)) return false;
@@ -571,7 +571,7 @@ struct LobbySession::Impl {
             dropRta();
             dropSignaling();
             if (unsupported || stop.stop_requested()) break;
-            logger.warn("Retrying the Xbox Live session in {} s", retryDelay.count());
+            logger.warn("Trying the Xbox Live session again in {} s", retryDelay.count());
             std::unique_lock lock(mutex);
             wake.wait_for(lock, stop, retryDelay, [] { return false; });
             retryDelay = std::min<std::chrono::seconds>(retryDelay * 2, MaxRetryDelay);
@@ -588,9 +588,16 @@ struct LobbySession::Impl {
             run(stop);
             return;
         } catch (std::exception const& e) {
-            logger.error("The Xbox Live session stopped after an unexpected error: {}", util::describeException(e));
+            logger.error(
+                "The Xbox Live session stopped after an unexpected error; restart the server to show it in the "
+                "Friends tab again"
+            );
+            logger.debug("Session error: {}", util::Redactor::instance().text(util::describeException(e)));
         } catch (...) {
-            logger.error("The Xbox Live session stopped after an unexpected error");
+            logger.error(
+                "The Xbox Live session stopped after an unexpected error; restart the server to show it in the "
+                "Friends tab again"
+            );
         }
         try {
             dropSignaling();
@@ -656,7 +663,7 @@ struct LobbySession::Impl {
                 if (!rtaReconnect.at) rtaReconnect.at = Clock::now();
             }
             if (signalingReconnect.at && Clock::now() >= *signalingReconnect.at) {
-                reconnect(signalingReconnect, "the Minecraft signaling service", [&](std::string& error) {
+                reconnect(signalingReconnect, "the Minecraft service for friends' joins", [&](std::string& error) {
                     return connectSignaling(stop, true, error);
                 });
             }
@@ -666,7 +673,6 @@ struct LobbySession::Impl {
                 reconnect(rtaReconnect, "Xbox Live", [&](std::string& error) {
                     if (!rta && !connectRta(stop, error)) return false;
                     if (publish(false)) return true;
-                    error = "could not publish the session";
                     return false;
                 });
                 if (!rtaReconnect.at) {
