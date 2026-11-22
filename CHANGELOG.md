@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `debug` in `config.json` turns on the detailed log for bug reports.
+
+### Changed
+
+- When the mod updates, `config.json` gets the new settings (`playerCount`, `debug`) at their defaults. The values you set stay.
+
 ## [0.3.0] - 2026-11-22
 
 ### Added

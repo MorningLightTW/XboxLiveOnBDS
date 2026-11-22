@@ -71,6 +71,7 @@ Xbox Live session is up: ...
 |---|---|---|
 | `visibility` | `"friendsOfFriends"` | 谁看得到服务器<br>`"friends"`：只有好友<br>`"friendsOfFriends"`：再加上服务器内玩家的好友 |
 | `playerCount` | `"includeHost"` | 好友页的人数<br>`"includeHost"`：玩家数 + 1（主机）<br>`"playersOnly"`：只算玩家（至少 1） |
+| `debug` | `false` | `true`：供问题报告用的详细日志 |
 
 要限制谁能进来，请用服务器的白名单（`allow-list`）。
 
@@ -86,7 +87,7 @@ Xbox Live session is up: ...
 
 **想换主机账号**：关闭服务器，删除 `mods/xbox-live-on-bds/data/auth.json`，再启动并重新登录。
 
-**报告问题**：创建空文件 `mods/xbox-live-on-bds/data/debug.flag`，重启并让问题再发生一次，然后创建一个[问题报告](https://github.com/MorningLightTW/XboxLiveOnBDS/issues/new?template=bug.yml)。
+**报告问题**：在 `config.json` 设置 `"debug": true`，重启并让问题再发生一次，然后创建一个[问题报告](https://github.com/MorningLightTW/XboxLiveOnBDS/issues/new?template=bug.yml)。
 
 ## 自行构建
 

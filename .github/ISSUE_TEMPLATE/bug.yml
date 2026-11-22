@@ -15,7 +15,7 @@ body:
     attributes:
       label: Mod version
       description: The `Loading XboxLiveOnBDS v...` line in the console.
-      placeholder: 0.1.2
+      placeholder: 0.3.0
     validations:
       required: true
 
@@ -80,9 +80,9 @@ body:
   - type: textarea
     id: log
     attributes:
-      label: Console log with debug.flag
+      label: Console log in debug mode
       description: |
-        Create an empty file `mods/xbox-live-on-bds/data/debug.flag`, restart the server, make the problem happen again, and paste the console log from the start.
+        Set `"debug": true` in `mods/xbox-live-on-bds/config/config.json`, restart the server, make the problem happen again, and paste the console log from the start.
         Addresses, ids, player names and tokens are already replaced by `ip1`, `player1` and so on. Remove these yourself: the host gamertag in the `Xbox Live session is up` line, and the names, XUIDs and `pfid`s in the server's own lines (`Player connected`, `Player Spawned` and similar).
       render: text
     validations:

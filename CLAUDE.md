@@ -42,9 +42,10 @@ xmake build <stun-test|udp-ports-test|signal-text-test|device-auth-test> && xmak
 - If you wrap the `onComplete` of `createAnswer` in a new `brstd::move_only_function`, BDS crashes (CFG).
 - If another program uses the `server-udp-ports`, BDS shows no error. It gives no candidates, and joins do not complete. Two servers on one machine need different `server-port`, `server-portv6` and `server-udp-ports`.
 - `setSink()` waits for sink calls that are in progress. The sink holds a raw `Signaling::Impl*`.
+- When you add a field to `Config`, increase `Config::version`. Else `ll::config::loadConfig` does not write the new field into existing `config.json` files.
 - In the LeviLamina headers, you can hook or call only `MCAPI` functions. `MCNAPI` functions have no address. In the NetherNet transport, this leaves only `ReceiveFromSignalingChannel`, `SendToSignalingChannel` and `ServerNegotiator::$createAnswer`. Its constructor, `createTransport` and the virtual thunks are `MCNAPI`.
 - BDS does not write `logs\latest.log` while it runs. Redirect the console to a file. PowerShell 5.1 adds a BOM to the start of piped stdin. Thus, send an empty line first.
-- `data/debug.flag` turns on the debug log, the signaling trace and join dumps in `data/debug/`. `util::Redactor` replaces IPs, ids, names and tokens in all of them with aliases. Send each new debug line or dump through it. `data/debug-raw.flag` turns off the redactor. Its output contains IPs and identity tokens. Delete it after use.
+- `"debug": true` in `config.json` or `data/debug.flag` turns on the debug log, the signaling trace and join dumps in `data/debug/`. `util::Redactor` replaces IPs, ids, names and tokens in all of them with aliases. Send each new debug line or dump through it. `data/debug-raw.flag` turns off the redactor. Its output contains IPs and identity tokens. Delete it after use.
 
 ## Log messages
 

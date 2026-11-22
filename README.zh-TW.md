@@ -71,6 +71,7 @@ Xbox Live session is up: ...
 |---|---|---|
 | `visibility` | `"friendsOfFriends"` | 誰看得到伺服器<br>`"friends"`：只有好友<br>`"friendsOfFriends"`：再加上伺服器內玩家的好友 |
 | `playerCount` | `"includeHost"` | 好友分頁的人數<br>`"includeHost"`：玩家數 + 1（主機）<br>`"playersOnly"`：只算玩家（至少 1） |
+| `debug` | `false` | `true`：供問題回報用的詳細記錄 |
 
 要限制誰能進來，請用伺服器的白名單（`allow-list`）。
 
@@ -86,7 +87,7 @@ Xbox Live session is up: ...
 
 **想換主機帳號**：關閉伺服器，刪除 `mods/xbox-live-on-bds/data/auth.json`，再啟動並重新登入。
 
-**回報問題**：建立空檔案 `mods/xbox-live-on-bds/data/debug.flag`，重啟並讓問題再發生一次，然後開一個[問題回報](https://github.com/MorningLightTW/XboxLiveOnBDS/issues/new?template=bug.yml)。
+**回報問題**：在 `config.json` 設定 `"debug": true`，重啟並讓問題再發生一次，然後開一個[問題回報](https://github.com/MorningLightTW/XboxLiveOnBDS/issues/new?template=bug.yml)。
 
 ## 自行建置
 

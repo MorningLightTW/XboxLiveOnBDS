@@ -71,6 +71,7 @@ The defaults work as they are. The file is `mods/xbox-live-on-bds/config/config.
 |---|---|---|
 | `visibility` | `"friendsOfFriends"` | Who sees the server<br>`"friends"`: friends only<br>`"friendsOfFriends"`: also friends of players on it |
 | `playerCount` | `"includeHost"` | The count in the Friends tab<br>`"includeHost"`: players + 1 for the host<br>`"playersOnly"`: players only (at least 1) |
+| `debug` | `false` | `true`: detailed log for a bug report |
 
 To limit who can join, use the server's allow list (`allow-list`).
 
@@ -86,7 +87,7 @@ To limit who can join, use the server's allow list (`allow-list`).
 
 **Changing the host account**: stop the server, delete `mods/xbox-live-on-bds/data/auth.json`, then start it and sign in again.
 
-**Reporting a problem**: create an empty `mods/xbox-live-on-bds/data/debug.flag`, restart, make the problem happen, then open a [bug report](https://github.com/MorningLightTW/XboxLiveOnBDS/issues/new?template=bug.yml).
+**Reporting a problem**: set `"debug": true` in `config.json`, restart, make the problem happen, then open a [bug report](https://github.com/MorningLightTW/XboxLiveOnBDS/issues/new?template=bug.yml).
 
 ## Build it yourself
 
