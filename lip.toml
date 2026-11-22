@@ -1,6 +1,6 @@
 format = 4
 id = "github.com/MorningLightTW/XboxLiveOnBDS"
-version = "0.2.2"
+version = "0.3.0"
 
 [info]
 name = "XboxLiveOnBDS"
