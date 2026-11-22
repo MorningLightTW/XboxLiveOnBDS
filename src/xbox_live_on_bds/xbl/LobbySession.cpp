@@ -105,7 +105,8 @@ struct LobbySession::Impl {
     std::string                 rtaWhy; // why the RTA socket ended
     bool                        signalingLost = false;
     std::string                 signalingWhy; // why the signaling socket ended
-    bool                        playerLeft = false;
+    bool                        playerLeft     = false;
+    bool                        retryRequested = false; // "xbl login": try the sign-in again now
     std::string                 connectionId;
 
     // Worker thread only.
@@ -498,8 +499,9 @@ struct LobbySession::Impl {
     /// A connection that dropped, tried again with a growing delay until it is back.
     struct Reconnect {
         std::optional<Clock::time_point> at;
-        std::chrono::seconds             delay    = FirstRetryDelay;
-        int                              failures = 0;
+        std::chrono::seconds             delay         = FirstRetryDelay;
+        int                              failures      = 0;
+        bool                             awaitingLogin = false; // Not scheduled: it waits for "xbl login".
     };
 
     template <class Attempt>
@@ -513,6 +515,12 @@ struct LobbySession::Impl {
         }
         ++state.failures;
         if (!error.empty()) logger.debug("Reconnect to {}: {}", service, util::Redactor::instance().text(error));
+        if (auth.awaitingLogin()) {
+            // The sign-in has told the owner to type "xbl login"; until then, retrying only fills the log.
+            state.at.reset();
+            state.awaitingLogin = true;
+            return;
+        }
         logger.warn("Could not reconnect to {}; trying again in {} s", service, state.delay.count());
         state.at    = Clock::now() + state.delay;
         state.delay = std::min<std::chrono::seconds>(state.delay * 2, MaxRetryDelay);
@@ -571,10 +579,19 @@ struct LobbySession::Impl {
             dropRta();
             dropSignaling();
             if (unsupported || stop.stop_requested()) break;
+            if (auth.awaitingLogin()) {
+                // The sign-in has told the owner to type "xbl login": wait for it, without a retry every few minutes.
+                std::unique_lock lock(mutex);
+                wake.wait(lock, stop, [this] { return retryRequested; });
+                retryRequested = false;
+                retryDelay     = FirstRetryDelay;
+                continue;
+            }
             logger.warn("Trying the Xbox Live session again in {} s", retryDelay.count());
             std::unique_lock lock(mutex);
-            wake.wait_for(lock, stop, retryDelay, [] { return false; });
-            retryDelay = std::min<std::chrono::seconds>(retryDelay * 2, MaxRetryDelay);
+            wake.wait_for(lock, stop, retryDelay, [this] { return retryRequested; });
+            retryRequested = false;
+            retryDelay     = std::min<std::chrono::seconds>(retryDelay * 2, MaxRetryDelay);
         }
         if (!unsupported && !stop.stop_requested()) serve(stop);
         dropSignaling(); // No more joins.
@@ -618,7 +635,7 @@ struct LobbySession::Impl {
         bool                             membersRetry = false; // the retry covers the nonces
         Reconnect                        rtaReconnect, signalingReconnect;
         while (!stop.stop_requested()) {
-            bool        doInfo = false, doMembers = false, left = false;
+            bool        doInfo = false, doMembers = false, left = false, retry = false;
             bool        rtaDropped = false, signalingDropped = false;
             std::string rtaReason, signalingReason;
             {
@@ -632,8 +649,10 @@ struct LobbySession::Impl {
                 if (signalingReconnect.at) until = std::min(until, *signalingReconnect.at);
                 std::unique_lock lock(mutex);
                 wake.wait_until(lock, stop, until, [this] {
-                    return rtaLost || signalingLost || (rta && (infoChanged || membersChanged || playerLeft));
+                    return rtaLost || signalingLost || retryRequested
+                        || (rta && (infoChanged || membersChanged || playerLeft));
                 });
+                retry            = std::exchange(retryRequested, false);
                 rtaDropped       = std::exchange(rtaLost, false);
                 rtaReason        = std::exchange(rtaWhy, {});
                 signalingDropped = std::exchange(signalingLost, false);
@@ -661,6 +680,11 @@ struct LobbySession::Impl {
                 );
                 dropRta();
                 if (!rtaReconnect.at) rtaReconnect.at = Clock::now();
+            }
+            if (retry) {
+                for (auto* state : {&rtaReconnect, &signalingReconnect}) {
+                    if (state->awaitingLogin) *state = {.at = Clock::now()};
+                }
             }
             if (signalingReconnect.at && Clock::now() >= *signalingReconnect.at) {
                 reconnect(signalingReconnect, "the Minecraft service for friends' joins", [&](std::string& error) {
@@ -742,6 +766,12 @@ void LobbySession::setPlayers(int players) {
     if (players < mImpl->info.players) mImpl->playerLeft = true;
     mImpl->info.players = players;
     mImpl->infoChanged  = true;
+    mImpl->wake.notify_all();
+}
+
+void LobbySession::retryNow() {
+    std::lock_guard lock(mImpl->mutex);
+    mImpl->retryRequested = true;
     mImpl->wake.notify_all();
 }
 

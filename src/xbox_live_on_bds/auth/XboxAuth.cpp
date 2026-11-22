@@ -1,6 +1,7 @@
 #include "xbox_live_on_bds/auth/XboxAuth.h"
 
 #include <algorithm>
+#include <atomic>
 #include <chrono>
 #include <condition_variable>
 #include <fstream>
@@ -46,6 +47,9 @@ constexpr std::string_view SessionStartUrl =
 constexpr std::int64_t ExpiryMargin = 5 * 60;
 
 constexpr int CacheVersion = 1;
+
+// Sign-in codes the mod shows by itself each time a sign-in is needed; after that, "xbl login" in the console.
+constexpr int AutoSignInCodes = 2;
 
 struct Token {
     std::string  value;
@@ -152,6 +156,12 @@ struct XboxAuth::Impl {
     std::map<std::string, XstsToken, std::less<>> xsts;
     MinecraftSession                              minecraft;
 
+    // Read by the server thread ("xbl login"), so not under `mutex`.
+    std::atomic<int>  codesLeft{AutoSignInCodes}; // sign-in codes the mod may still show by itself
+    std::atomic<bool> codeShown{false};           // a sign-in code waits on the console now
+    std::atomic<bool> signedIn{false};            // a refresh token is saved
+    std::atomic<bool> toldToLogin{false};         // the console was told to type "xbl login"
+
     Impl(ll::io::Logger& logger, std::filesystem::path file) : logger(logger), cacheFile(std::move(file)) { load(); }
 
     // ---- cache ----------------------------------------------------------------------------------------------
@@ -184,6 +194,7 @@ struct XboxAuth::Impl {
             }
             auto const mc = j.value("minecraft", json::object());
             minecraft = {mc.value("authorization", ""), mc.value("pmid", ""), mc.value("notAfter", std::int64_t{0})};
+            signedIn  = !msaRefresh.empty();
         } catch (json::exception const& e) {
             logger.warn("Could not read the saved sign-in in data/auth.json; a new sign-in is necessary");
             logger.debug("data/auth.json: {}", util::describeException(e));
@@ -197,6 +208,7 @@ struct XboxAuth::Impl {
         deviceKey.reset();
         msa = device = user = title = {};
         msaRefresh.clear();
+        signedIn = false;
         xsts.clear();
         minecraft = {};
         return *this;
@@ -255,6 +267,7 @@ struct XboxAuth::Impl {
         msa.value    = j.at("access_token").get<std::string>();
         msa.notAfter = util::unixNow() + j.at("expires_in").get<std::int64_t>();
         if (j.contains("refresh_token")) msaRefresh = j["refresh_token"].get<std::string>();
+        signedIn = !msaRefresh.empty();
         save();
         return true;
     }
@@ -290,6 +303,7 @@ struct XboxAuth::Impl {
         // removed the access.
         logger.warn("Microsoft no longer accepts the saved sign-in; a new sign-in is necessary");
         msaRefresh.clear();
+        signedIn = false;
         return Refresh::Rejected;
     }
 
@@ -323,6 +337,8 @@ struct XboxAuth::Impl {
             code->at("user_code").get<std::string>()
         );
         logger.warn("==============================================================");
+        --codesLeft;
+        codeShown = true;
 
         while (util::unixNow() < deadline) {
             if (!waitFor(stop, interval)) return false;
@@ -341,6 +357,8 @@ struct XboxAuth::Impl {
             auto j = parseJson(poll.body);
             if (poll.ok() && j) {
                 logger.info("Microsoft account signed in");
+                codesLeft   = AutoSignInCodes;
+                toldToLogin = false;
                 return storeMsa(*j);
             }
             // Only Microsoft's own answer ends the sign-in: a network blip, a 5xx or a proxy's page must not void
@@ -362,14 +380,21 @@ struct XboxAuth::Impl {
             if (error == "expired_token") break;
             logger.debug("Microsoft sign-in poll: {}", util::Redactor::instance().text(poll.describe()));
             if (error == "authorization_declined") {
-                logger.warn("The Microsoft account sign-in was declined; a new sign-in code follows");
+                logger.warn("The Microsoft account sign-in was declined{}", afterUnusedCode());
                 return false;
             }
-            logger.error("Microsoft account sign-in failed ({}); a new sign-in code follows", error);
+            logger.error("Microsoft account sign-in failed ({}){}", error, afterUnusedCode());
             return false;
         }
-        logger.warn("The sign-in code expired before it was used; a new sign-in code follows");
+        logger.warn("The sign-in code expired before it was used{}", afterUnusedCode());
         return false;
+    }
+
+    /// What comes after a sign-in code that was not used, as the end of the line that says so.
+    std::string afterUnusedCode() {
+        if (codesLeft.load() > 0) return "; a new sign-in code follows";
+        toldToLogin = true;
+        return ". For a new sign-in code, type \"xbl login\" in the server console";
     }
 
     bool ensureMsa(std::stop_token const& stop) {
@@ -384,7 +409,22 @@ struct XboxAuth::Impl {
                 break;
             }
         }
-        return deviceCodeLogin(stop);
+        if (codesLeft.load() <= 0) {
+            if (!toldToLogin.exchange(true)) {
+                logger.warn("Not signed in. For a sign-in code, type \"xbl login\" in the server console");
+            }
+            return false;
+        }
+        // codeShown is set once the code is on the console; it ends with the sign-in, also by an exception.
+        bool ok = false;
+        try {
+            ok = deviceCodeLogin(stop);
+        } catch (...) {
+            codeShown = false;
+            throw;
+        }
+        codeShown = false;
+        return ok;
     }
 
     // ---- Xbox Live ------------------------------------------------------------------------------------------
@@ -684,6 +724,16 @@ std::optional<MinecraftSession> XboxAuth::getMinecraftSession(std::string_view g
         return std::nullopt;
     }
 }
+
+XboxAuth::LoginRequest XboxAuth::requestLogin() {
+    if (mImpl->codeShown) return LoginRequest::CodeShown;
+    if (mImpl->signedIn) return LoginRequest::AlreadySignedIn;
+    if (mImpl->codesLeft.load() < 1) mImpl->codesLeft = 1;
+    mImpl->toldToLogin = false;
+    return LoginRequest::Started;
+}
+
+bool XboxAuth::awaitingLogin() const { return !mImpl->signedIn && !mImpl->codeShown && mImpl->codesLeft.load() <= 0; }
 
 void XboxAuth::signOut() {
     std::lock_guard lock(mImpl->mutex);

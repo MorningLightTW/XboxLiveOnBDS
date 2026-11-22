@@ -154,6 +154,19 @@ bool Mod::enable() {
             },
             .joinedThroughXboxLive =
                 [](NetworkIdentifier const& id) { return bds::transport_bridge::joinedThroughXboxLive(id); },
+            .login = [this]() -> std::string {
+                if (!mAuth) return "The mod is not loaded";
+                switch (mAuth->requestLogin()) {
+                case auth::XboxAuth::LoginRequest::Started:
+                    if (mSession) mSession->retryNow();
+                    return "A new sign-in code follows";
+                case auth::XboxAuth::LoginRequest::AlreadySignedIn:
+                    return "The host account is already signed in. To change it, see the README";
+                case auth::XboxAuth::LoginRequest::CodeShown:
+                    return "A sign-in code is on the console now. Use that code";
+                }
+                return {};
+            },
         }
     );
 

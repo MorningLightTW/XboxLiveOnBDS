@@ -30,6 +30,7 @@
 #include "mc/server/ServerPlayer.h"
 #include "mc/server/commands/CommandContext.h"
 #include "mc/server/commands/CommandOrigin.h"
+#include "mc/server/commands/CommandOriginType.h"
 #include "mc/server/commands/CommandOutput.h"
 #include "mc/server/commands/CommandOutputParameter.h"
 #include "mc/server/commands/CommandPermissionLevel.h"
@@ -52,6 +53,7 @@ using namespace ll::i18n_literals;
 
 constexpr std::string_view CommandName       = "xbl";
 constexpr char             TargetParamName[] = "player"; // The member of PingTargetParam.
+constexpr std::string_view LoginText         = "login";  // "xbl login": the server console only.
 constexpr auto             Description       = "XboxLiveOnBDS: your connection to this server"_trl;
 
 ll::io::Logger* logger = nullptr;
@@ -121,6 +123,12 @@ bool isTargetOverload(AvailableCommandsPacketPayload::OverloadData const& overlo
     return std::ranges::any_of(params, [](auto const& param) { return param.name.get() == TargetParamName; });
 }
 
+/// "xbl login": for the server console only, so no player sees it in the command list.
+bool isLoginOverload(AvailableCommandsPacketPayload::OverloadData const& overload) {
+    auto const& params = overload.params.get();
+    return std::ranges::any_of(params, [](auto const& param) { return param.name.get() == LoginText; });
+}
+
 AvailableCommandsPacketPayload::CommandData* findCommand(AvailableCommandsPacketPayload& payload) {
     for (auto& command : payload.mCommands.get()) {
         if (command.name.get() == CommandName) return &command;
@@ -133,20 +141,23 @@ bool canTargetOthers(Player const& player) {
     return player.getCommandPermissionLevel() >= CommandPermissionLevel::GameDirectors;
 }
 
-/// The serialized command list without "/xbl ping <player>", or nullopt to send it as is. BDS builds one list for
-/// everyone, and the client hides whole commands only, so the overload is cut out for each player who may not use it.
-std::optional<std::string>
-hideTargetOverload(NetworkIdentifier const& id, Packet const& packet, std::string const& data) {
+/// The serialized command list without "/xbl login", and without "/xbl ping <player>" for a player who may not use
+/// it; nullopt to send it as is. BDS builds one list for everyone, and the client hides whole commands only, so the
+/// overloads are cut out for each player.
+std::optional<std::string> hideOverloads(NetworkIdentifier const& id, Packet const& packet, std::string const& data) {
     auto handler = ll::service::getServerNetworkHandler();
     if (!handler) return std::nullopt;
-    auto* player = handler->_getServerPlayer(id, SubClientId::PrimaryClient);
-    if (player && canTargetOthers(*player)) return std::nullopt;
+    auto* player     = handler->_getServerPlayer(id, SubClientId::PrimaryClient);
+    bool  hideTarget = !player || !canTargetOthers(*player);
+    auto  hidden     = [&](AvailableCommandsPacketPayload::OverloadData const& overload) {
+        return isLoginOverload(overload) || (hideTarget && isTargetOverload(overload));
+    };
 
     auto& original = static_cast<AvailableCommandsPacket const&>(packet);
     bool  present  = false;
     for (auto const& command : original.mCommands.get()) {
         if (command.name.get() != CommandName) continue;
-        present = std::ranges::any_of(command.overloads.get(), isTargetOverload);
+        present = std::ranges::any_of(command.overloads.get(), hidden);
         break;
     }
     if (!present) return std::nullopt;
@@ -156,7 +167,7 @@ hideTargetOverload(NetworkIdentifier const& id, Packet const& packet, std::strin
     auto fresh   = registry->serializeAvailableCommands();
     auto command = findCommand(fresh);
     if (!command) return std::nullopt;
-    std::erase_if(command->overloads.get(), isTargetOverload);
+    std::erase_if(command->overloads.get(), hidden);
 
     BinaryStream before;
     original.write(before);
@@ -190,7 +201,7 @@ LL_TYPE_INSTANCE_HOOK(
 ) {
     if (packet.getId() != MinecraftPacketIds::AvailableCommands) return origin(id, packet, data);
     try {
-        auto        hidden  = hideTargetOverload(id, packet, data);
+        auto        hidden  = hideOverloads(id, packet, data);
         auto const& current = hidden ? *hidden : data;
         if (auto localized = localizeCommandList(id, current)) return origin(id, packet, *localized);
         return origin(id, packet, current);
@@ -249,9 +260,9 @@ LL_TYPE_INSTANCE_HOOK(
     return origin(context, suppressOutput);
 }
 
-/// Where the argument of "/xbl ping <arg>" starts and ends in the typed text; an empty range at the end if the
-/// text does not look like that.
-std::pair<size_t, size_t> pingArgumentRange(std::string_view text) {
+/// Where the word that makes "/xbl ping <arg>" or "/xbl login" fail starts and ends in the typed text: the argument
+/// of "ping", or the word after "xbl". An empty range at the end if the text does not look like that.
+std::pair<size_t, size_t> badArgumentRange(std::string_view text) {
     size_t at        = 0;
     auto   skipSpace = [&] {
         while (at < text.size() && std::isspace(static_cast<unsigned char>(text[at]))) ++at;
@@ -267,20 +278,18 @@ std::pair<size_t, size_t> pingArgumentRange(std::string_view text) {
     if (at < text.size() && text[at] == '/') ++at;
     if (skipWord("xbl")) {
         skipSpace();
-        if (skipWord("ping")) {
-            skipSpace();
-            size_t end = at;
-            while (end < text.size() && !std::isspace(static_cast<unsigned char>(text[end]))) ++end;
-            if (end > at) return {at, end};
-        }
+        if (skipWord("ping")) skipSpace();
+        size_t end = at;
+        while (end < text.size() && !std::isspace(static_cast<unsigned char>(text[end]))) ++end;
+        if (end > at) return {at, end};
     }
     return {text.size(), text.size()};
 }
 
-/// Vanilla's syntax error for the argument of "/xbl ping": the client translates it itself.
+/// Vanilla's syntax error, as if the overload did not exist: the client translates it itself.
 void syntaxError(CommandOutput& output) {
     std::string_view text = currentCommandText ? std::string_view{*currentCommandText} : std::string_view{};
-    auto [start, end]     = pingArgumentRange(text);
+    auto [start, end]     = badArgumentRange(text);
     auto from             = start > SyntaxContextBefore ? start - SyntaxContextBefore : 0;
     auto to               = std::min(text.size(), end + SyntaxContextAfter);
     output.error(
@@ -356,6 +365,15 @@ void registerPingCommand(ll::io::Logger& log, PingCommandSources sources) {
             return;
         }
         report(*shared, locale, output, *static_cast<Player*>(entity), true);
+    });
+
+    // Not in any player's command list. A player who types it anyway gets the vanilla syntax error.
+    command.overload().text(LoginText).execute([shared](CommandOrigin const& origin, CommandOutput& output) {
+        if (origin.getOriginType() != CommandOriginType::DedicatedServer || !shared->login) {
+            syntaxError(output);
+            return;
+        }
+        output.success(escapePercent(shared->login()));
     });
 
     command.overload<PingTargetParam>()

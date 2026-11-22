@@ -65,6 +65,8 @@ public:
 
     void setPlayers(int players);
     void setInfo(LobbyInfo info);
+    /// After "xbl login": try the sign-in and the connections again now, also when they wait for it.
+    void retryNow();
 
 private:
     struct Impl;

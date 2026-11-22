@@ -2,6 +2,7 @@
 
 #include <functional>
 #include <optional>
+#include <string>
 
 #include "xbox_live_on_bds/LinkMonitor.h"
 
@@ -15,10 +16,12 @@ namespace xbox_live_on_bds {
 /// "/xbl ping": a player's own connection to the server: how it is carried (an Xbox Live friend join, direct or
 /// through Microsoft's relay, or another kind), ping, jitter and packet loss, in the player's game language. No
 /// addresses or ids. "/xbl ping <player>" shows others' and needs operator rights; for other players it is hidden from
-/// the command list and fails with the vanilla syntax error.
+/// the command list and fails with the vanilla syntax error. "xbl login" (server console only, in no player's command
+/// list) asks for a new sign-in code.
 struct PingCommandSources {
     std::function<std::optional<LinkMonitor::Stats>(Player const&)> stats;
     std::function<bool(NetworkIdentifier const&)>                   joinedThroughXboxLive;
+    std::function<std::string()> login; // Runs "xbl login" on the server thread; returns the reply. Must not block.
 };
 
 /// Registers the command; call from enable(), after the mod's lang files are loaded. Also gives each player the

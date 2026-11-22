@@ -59,6 +59,16 @@ public:
     /// Forgets the account (and deletes the cache), so the next getXsts starts a new device code login.
     void signOut();
 
+    /// What requestLogin() did.
+    enum class LoginRequest { Started, AlreadySignedIn, CodeShown };
+
+    /// For "xbl login" in the server console: lets the next sign-in show one more code. When a sign-in is needed, the
+    /// mod shows two codes by itself; after that it waits for this. Does not block (safe on the server thread).
+    LoginRequest requestLogin();
+
+    /// Not signed in, and no sign-in code until requestLogin(): trying again does not help before that.
+    [[nodiscard]] bool awaitingLogin() const;
+
 private:
     struct Impl;
     std::unique_ptr<Impl> mImpl;
