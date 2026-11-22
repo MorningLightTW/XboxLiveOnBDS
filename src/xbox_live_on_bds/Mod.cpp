@@ -55,6 +55,13 @@ void Mod::loadConfig() {
             config.visibility
         );
     }
+    mPlayerCount = config.playerCount == "playersOnly" ? xbl::PlayerCount::PlayersOnly : xbl::PlayerCount::IncludeHost;
+    if (config.playerCount != "includeHost" && config.playerCount != "playersOnly") {
+        logger.warn(
+            "config.json: playerCount \"{}\" is not \"includeHost\" or \"playersOnly\"; using \"includeHost\"",
+            config.playerCount
+        );
+    }
 }
 
 bool Mod::load() {
@@ -114,8 +121,9 @@ void Mod::startSession() {
         return;
     }
     for (auto const& blocker : bds::findJoinBlockers()) getSelf().getLogger().warn("Friends' joins: {}", blocker);
-    info->players    = static_cast<int>(mOnline.size());
-    info->visibility = mVisibility;
+    info->players     = static_cast<int>(mOnline.size());
+    info->visibility  = mVisibility;
+    info->playerCount = mPlayerCount;
     if (mDebug) info->debugDir = getSelf().getDataDir() / "debug";
     info->inject = [](std::uint64_t from, std::string_view signal) {
         return bds::transport_bridge::deliver(from, signal);

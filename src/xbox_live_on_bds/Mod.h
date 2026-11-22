@@ -42,8 +42,9 @@ private:
     std::unique_ptr<xbl::LobbySession>  mSession; // Network work runs on its own thread.
     std::set<std::string>               mOnline;  // Players in game, by UUID (server thread only).
     std::vector<ll::event::ListenerPtr> mListeners;
-    bool                                mDebug      = false;
-    xbl::Visibility                     mVisibility = xbl::Visibility::FriendsOfFriends; // From config.json.
+    bool                                mDebug       = false;
+    xbl::Visibility                     mVisibility  = xbl::Visibility::FriendsOfFriends; // From config.json.
+    xbl::PlayerCount                    mPlayerCount = xbl::PlayerCount::IncludeHost;     // From config.json.
 };
 
 } // namespace xbox_live_on_bds

@@ -25,9 +25,13 @@ namespace xbl {
 /// FriendsOfFriends 3, Public 4, in the order the game declares them).
 enum class Visibility { Friends = 2, FriendsOfFriends = 3 };
 
+/// How the Friends tab counts players: one more for the host (as the game does), or only the players on the server.
+enum class PlayerCount { IncludeHost, PlayersOnly };
+
 /// What friends see in the Friends tab, and how their game reaches the server.
 struct LobbyInfo {
-    Visibility            visibility = Visibility::FriendsOfFriends;
+    Visibility            visibility  = Visibility::FriendsOfFriends;
+    PlayerCount           playerCount = PlayerCount::IncludeHost;
     std::string           worldName; // Shown under the host's name (the host is always the signed-in account).
     std::string           version;   // Game version, e.g. "26.60.6".
     int                   protocol    = 0;
